@@ -1,0 +1,11 @@
+{
+  "name": "gift-reco",
+  "private": true,
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @app/web dev",
+    "dev:api": "pnpm --filter @app/api dev",
+    "dev:reco": "pnpm --filter @apps/reco dev",
+    "dev": "pnpm -r --parallel dev"
+  }
+}

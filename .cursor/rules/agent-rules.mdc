@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+- モジュール管理ツールは、特別な理由がない限り pnpm を利用すること。
+- デバッグなどの調査結果をドキュメントとしてまとめる場合は、.md ファイルの形式で作成すること。また、対象のソースコード分類ごとで.md ファイルの格納先を下記のように分けること。
+
+| 対象分類       | 格納先フォルダ                      |
+| -------------- | ----------------------------------- |
+| apps/web/関連  | /gift-reco/docs/for_cursorAI/web    |
+| apps/api/関連  | /gift-reco/docs/for_cursorAI/api    |
+| apps/reco/関連 | /gift-reco/docs/for_cursorAI/reco   |
+| その他         | /gift-reco/docs/for_cursorAI/othres |

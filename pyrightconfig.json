@@ -1,0 +1,10 @@
+{
+  "venvPath": "apps/reco",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "apps/reco"
+    }
+  ],
+  "typeCheckingMode": "basic"
+}

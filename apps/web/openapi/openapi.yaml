@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: GiftReco API
+  version: 0.1.0
+  description: |
+    Gift recommendation API (MVP).
+    This spec defines recommendation execution endpoint.
+
+servers:
+  - url: http://localhost:3001
+
+tags:
+  - name: Recommendations
+    description: Recommend items based on user context.
+
+paths:
+  /recommendations:
+    post:
+      tags: [Recommendations]
+      summary: Create recommendation
+      description: |
+        Creates a context snapshot and runs recommendation.
+
+        - For normal users: specify `mode` only.
+        - For admins: `algorithmOverride` can override server selection.
+
+        The response includes `resolvedAlgorithm` which represents the actual algorithm/params used.
+      operationId: createRecommendation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationCreateRequest"
+            examples:
+              normal_balanced:
+                summary: Normal user (balanced)
+                value:
+                  eventId: "11111111-1111-1111-1111-111111111111"
+                  recipientId: "22222222-2222-2222-2222-222222222222"
+                  budgetMin: 5000
+                  budgetMax: 10000
+                  featuresLike: ["落ち着いた", "実用的", "お酒", "上質"]
+                  featuresNotLike: ["派手"]
+                  featuresNg: ["要冷蔵"]
+                  mode: "balanced"
+              admin_override:
+                summary: Admin override (experiment)
+                value:
+                  eventId: "11111111-1111-1111-1111-111111111111"
+                  recipientId: "22222222-2222-2222-2222-222222222222"
+                  budgetMin: 5000
+                  budgetMax: 10000
+                  featuresLike: ["落ち着いた", "実用的", "お酒", "上質"]
+                  featuresNotLike: []
+                  featuresNg: []
+                  mode: "balanced"
+                  algorithmOverride: "vector_ranked_mmr"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationCreateResponse"
+        "400":
+          description: Bad Request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (algorithmOverride is allowed for ADMIN only)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden_override:
+                  value:
+                    message: "algorithmOverride is allowed for ADMIN only"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    RecommendationCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional event id (e.g., birthday, father's day).
+        recipientId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional recipient id.
+        budgetMin:
+          type: integer
+          minimum: 0
+          nullable: true
+        budgetMax:
+          type: integer
+          minimum: 0
+          nullable: true
+        featuresLike:
+          type: array
+          items:
+            type: string
+          default: []
+        featuresNotLike:
+          type: array
+          items:
+            type: string
+          default: []
+        featuresNg:
+          type: array
+          items:
+            type: string
+          default: []
+        mode:
+          $ref: "#/components/schemas/RecommendationMode"
+        algorithmOverride:
+          $ref: "#/components/schemas/RecommendationAlgorithmOverride"
+          nullable: true
+      required:
+        - featuresLike
+        - featuresNotLike
+        - featuresNg
+        - mode
+
+    RecommendationMode:
+      type: string
+      description: |
+        User-facing recommendation mode.
+        The server maps this mode to an internal algorithm/params.
+      enum: [balanced, diverse, popular]
+      default: balanced
+
+    RecommendationAlgorithmOverride:
+      type: string
+      description: |
+        Admin-only override for experiments.
+        If provided by a non-admin user, the server must return 403.
+      enum:
+        - vector_only
+        - vector_ranked
+        - vector_ranked_mmr
+
+    RecommendationCreateResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        recommendationId:
+          type: string
+          format: uuid
+          description: apl.recommendation.id
+        contextId:
+          type: string
+          format: uuid
+          description: apl.context.id used for this recommendation
+        mode:
+          $ref: "#/components/schemas/RecommendationMode"
+        resolvedAlgorithm:
+          $ref: "#/components/schemas/ResolvedRecommendationAlgorithm"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecommendedItem"
+      required:
+        - recommendationId
+        - contextId
+        - mode
+        - resolvedAlgorithm
+        - items
+
+    ResolvedRecommendationAlgorithm:
+      type: object
+      additionalProperties: false
+      description: |
+        The actual algorithm/params used by the server.
+        This is returned for observability and reproducibility.
+      properties:
+        name:
+          type: string
+          enum:
+            - vector_only
+            - vector_ranked
+            - vector_ranked_mmr
+        params:
+          type: object
+          additionalProperties: true
+      required:
+        - name
+
+    RecommendedItem:
+      type: object
+      additionalProperties: false
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        rank:
+          type: integer
+          minimum: 1
+        score:
+          type: number
+          format: float
+          nullable: true
+        vectorScore:
+          type: number
+          format: float
+          nullable: true
+        rerankScore:
+          type: number
+          format: float
+          nullable: true
+        reason:
+          type: object
+          additionalProperties: true
+      required:
+        - itemId
+        - rank
+
+    # ---------------------------
+    # Error
+    # ---------------------------
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+        allowed:
+          type: array
+          items:
+            type: string
+        detail:
+          type: string
+      required:
+        - message

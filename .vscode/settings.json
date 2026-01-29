@@ -1,0 +1,40 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.pnpm": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.pnpm": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "eslint.workingDirectories": [
+    "apps/web",
+    "apps/api"
+  ],
+  "eslint.options": {
+    "ignorePath": ".eslintignore"
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/reco/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "apps/reco/src"
+  ],
+  // --- Pylance をメインの型チェッカーとして使用 ---
+  "python.languageServer": "None",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.indexing": true,
+  // --- CursorPyright の設定（必要に応じて調整） ---
+  "cursorpyright.analysis.typeCheckingMode": "strict", // 厳しめが好みなら strict
+  "cursorpyright.analysis.autoImportCompletions": true,
+  "cursorpyright.analysis.useLibraryCodeForTypes": true,
+  // --- ms-python.python の機能は実行・環境管理に限定 ---
+  "python.terminal.activateEnvironment": true,
+  "python.formatting.provider": "none", // Black/Ruff を使うならここは none
+  // --- デバッグ設定（debugpy） ---
+  "python.debugpy.useExperimental": false,
+  // --- Lint（Ruff を使う場合） ---
+  // "ruff.enable": true,
+  // "ruff.lint.enable": true,
+  // "ruff.format.enable": true,
+}
