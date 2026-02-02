@@ -19,5 +19,5 @@ def build_context(*, job_id: str, env: str, run_id: str, dry_run: bool = False) 
         env=env,
         run_id=run_id,
         job_start_at=datetime.now(timezone.utc),
-        dry_run=dry_run,
+        dry_run=dry_run
     )

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.append(str(ROOT))
+sys.path.append(str(ROOT)) 
 
 from services.context import build_context  # noqa: E402
 
