@@ -1,0 +1,23 @@
+name: Batch Unit CI
+on: [push, pull_request]
+jobs:
+    unit:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: 3.13.3
+
+            - name: Install dependencies
+              working-directory: apps/batch
+              run: pip install -r requirements.txt
+
+            - name: Run tests
+              working-directory: apps/batch/etl
+              run: pytest -m "unit"
