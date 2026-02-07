@@ -7,6 +7,7 @@ from typing import Any, Mapping, Optional, Protocol, Sequence
 class Cursor(Protocol):
     def execute(self, query: str, params: Sequence[object] | None = None) -> None: ...
     def executemany(self, query: str, params_seq: Sequence[Sequence[object]]) -> None: ...
+    def fetchall(self) -> Sequence[Sequence[object]]: ...
     def fetchone(self) -> Optional[Sequence[object]]: ...
     @property
     def rowcount(self) -> int: ...
@@ -171,6 +172,24 @@ class ItemRepo:
             raise RuntimeError("failed to upsert shop")
         self._conn.commit()
         return str(row[0])
+
+    def fetch_distinct_genre_ids_by_source_ids(self, source_ids: Sequence[str]) -> Sequence[int]:
+        if not source_ids:
+            return []
+        sql = (
+            "select distinct rakuten_genre_id "
+            "from apl.item "
+            "where rakuten_item_code = any(%s) "
+            "and rakuten_genre_id is not null "
+            "order by rakuten_genre_id"
+        )
+        cur = self._conn.cursor()
+        try:
+            cur.execute(sql, (list(source_ids),))
+            rows = cur.fetchall()
+        finally:
+            cur.close()
+        return [row[0] for row in rows]
 
 
 def _extract_images(normalized_item: Mapping[str, Any]) -> list[tuple[str, str, int]]:
