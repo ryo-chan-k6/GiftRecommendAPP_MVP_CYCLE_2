@@ -10,6 +10,7 @@ permissions:
     pull-requests: write
 jobs:
     unit:
+        if: github.event_name == 'pull_request' || github.event.head_commit != null
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
@@ -31,7 +32,7 @@ jobs:
               run: pytest -m "unit"
     create-pr:
         needs: unit
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.event.head_commit != null
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code

@@ -1,0 +1,226 @@
+Project gift_reco_apl {
+  database_type: "PostgreSQL"
+  note: "Generated from docs/db/database_schema.md"
+}
+
+// ------------------------------------------------------------
+// Enums
+// ------------------------------------------------------------
+Enum UserRole {
+  USER
+  ADMIN
+}
+
+Enum Gender {
+  MALE
+  FEMALE
+}
+
+Enum AgeRange {
+  TEEN
+  TWENTIES
+  THIRTIES
+  FORTIES
+  FIFTIES
+  SIXTIES
+  SEVENTIES_PLUS
+  UNKNOWN
+}
+
+Enum RelationType {
+  BOSS
+  SUBORDINATE
+  COWORKER
+  CLIENT
+  FRIEND
+  PARTNER
+  SPOUSE
+  PARENT
+  CHILD
+  SIBLING
+  GRANDPARENT
+  RELATIVE
+  TEACHER
+  OTHER
+  UNSPECIFIED
+}
+
+Enum EventType {
+  BIRTHDAY
+  CHRISTMAS
+  VALENTINE
+  WHITE_DAY
+  MOTHERS_DAY
+  FATHERS_DAY
+  RESPECT_FOR_AGED
+  WEDDING
+  BIRTH_CELEBRATION
+  MOVING
+  PROMOTION
+  THANKS
+  APOLOGY
+  JOB_CHANGE
+  ANNIVERSARY
+  NONE
+}
+
+Enum BudgetRange {
+  U3000
+  B3000_5000
+  B5000_8000
+  B8000_12000
+  B12000_20000
+  O20000
+}
+
+// ------------------------------------------------------------
+// Tables (schema: apl)
+// ------------------------------------------------------------
+Table "apl.user_profile" {
+  id uuid [pk, note: "FK -> auth.users(id)"]
+  name varchar [not null]
+  role varchar [default: "USER", note: "USER/ADMIN"]
+  created_at timestampz [default: "now()"]
+}
+
+Table "apl.event" {
+  id uuid [pk]
+  name varchar [not null]
+  scope varchar [default: "COMMON", note: "COMMON/PRIVATE"]
+  start_date timestampz
+  end_date timestampz
+  default_budget_min int
+  default_budget_max int
+  created_by uuid [note: "FK -> auth.users(id), COMMONならNULL"]
+  created_at timestampz [default: "now()"]
+  updated_at timestampz
+
+  Indexes {
+    (scope)
+    (created_by)
+  }
+}
+
+Table "apl.recipient" {
+  id uuid [pk]
+  name varchar [not null]
+  age int
+  birthday_date date
+  gender varchar [note: "MALE/FEMALE"]
+  user_id uuid [note: "FK -> auth.users(id)"]
+  relation varchar
+  note text
+  created_at timestampz [default: "now()"]
+  updated_at timestampz
+}
+
+Table "apl.event_recipient" {
+  id uuid [pk, note: "管理用ID"]
+  user_id uuid [note: "FK -> auth.users(id)"]
+  event_id uuid [note: "FK -> apl.event.id"]
+  recipient_id uuid [note: "FK -> apl.recipient.id"]
+  budget_min int
+  budget_max int
+  created_at timestampz [default: "now()"]
+}
+
+Table "apl.context" {
+  id uuid [pk]
+  user_id uuid [note: "FK -> auth.users(id)"]
+  event_id uuid [note: "FK -> apl.event.id"]
+  recipient_id uuid [note: "FK -> apl.recipient.id"]
+  budget_min int
+  budget_max int
+  features_like text[] [not null, default: "{}"]
+  features_not_like text[] [not null, default: "{}"]
+  features_ng text[] [not null, default: "{}"]
+  context_text text [not null]
+  context_vector vector(1536)
+  embedding_model text [not null]
+  embedding_version int [not null, default: 1]
+  context_hash text [unique, note: "コンテキストのハッシュ値"]
+  created_at timestampz [default: "now()"]
+}
+
+Table "apl.favorite" {
+  id uuid [pk]
+  user_id uuid [not null, note: "FK -> auth.users(id)"]
+  event_id uuid [note: "FK -> apl.event.id, 任意"]
+  recipient_id uuid [note: "FK -> apl.recipient.id, 任意"]
+  item_id uuid [note: "FK -> apl.item.id"]
+  created_at timestampz [default: "now()"]
+  updated_at timestampz
+
+  Indexes {
+    (user_id)
+    (event_id)
+    (recipient_id)
+    (event_id, recipient_id)
+    // UNIQUE: (user_id, event_id, recipient_id, item_id)
+    // NOTE: NULLをCOALESCEで固定値に潰してUNIQUE化
+  }
+}
+
+Table "apl.recommendation" {
+  id uuid [pk]
+  user_id uuid [note: "FK -> auth.users(id)"]
+  context_id uuid [note: "FK -> apl.context.id"]
+  algorithm text [note: "pgvector_cosine / hybrid / mmr"]
+  params jsonb
+  created_at timestampz [default: "now()"]
+}
+
+Table "apl.recommendation_item" {
+  id uuid [pk]
+  recommendation_id uuid [note: "FK -> apl.recommendation.id"]
+  item_id uuid [note: "FK -> apl.item.id"]
+  rank int
+  score float
+  vector_score float
+  rerank_score float
+  reason jsonb
+
+  Indexes {
+    (recommendation_id, rank) [unique]
+    (recommendation_id, item_id) [unique]
+  }
+}
+
+// ------------------------------------------------------------
+// References
+// ------------------------------------------------------------
+Ref: "apl.user_profile".id > "auth.users".id
+
+Ref: "apl.event".created_by > "auth.users".id
+
+Ref: "apl.recipient".user_id > "auth.users".id
+
+Ref: "apl.event_recipient".user_id > "auth.users".id
+Ref: "apl.event_recipient".event_id > "apl.event".id
+Ref: "apl.event_recipient".recipient_id > "apl.recipient".id
+
+Ref: "apl.context".user_id > "auth.users".id
+Ref: "apl.context".event_id > "apl.event".id
+Ref: "apl.context".recipient_id > "apl.recipient".id
+
+Ref: "apl.favorite".user_id > "auth.users".id
+Ref: "apl.favorite".event_id > "apl.event".id
+Ref: "apl.favorite".recipient_id > "apl.recipient".id
+Ref: "apl.favorite".item_id > "apl.item".id
+
+Ref: "apl.recommendation".user_id > "auth.users".id
+Ref: "apl.recommendation".context_id > "apl.context".id
+
+Ref: "apl.recommendation_item".recommendation_id > "apl.recommendation".id
+Ref: "apl.recommendation_item".item_id > "apl.item".id
+
+// ------------------------------------------------------------
+// External tables referenced in schema
+// ------------------------------------------------------------
+Table "auth.users" {
+  id uuid [pk, note: "Supabase Auth user id"]
+}
+
+Table "apl.item" {
+  id uuid [pk, note: "Item master (not defined in this doc)"]
+}
