@@ -53,7 +53,7 @@ def test_run_entity_etl_writes_on_diff() -> None:
     def fetcher(_target):
         return {"itemCode": "id-1"}
 
-    def applier(normalized, _ctx):
+    def applier(normalized, _ctx, _target):
         applier_calls.append(normalized)
 
     result = service.run_entity_etl(
@@ -87,7 +87,7 @@ def test_run_entity_etl_skips_when_hash_exists() -> None:
     def fetcher(_target):
         return {"itemCode": "id-1"}
 
-    def applier(normalized, _ctx):
+    def applier(normalized, _ctx, _target):
         applier_calls.append(normalized)
 
     result = service.run_entity_etl(
@@ -119,7 +119,7 @@ def test_run_entity_etl_skips_writes_on_dry_run() -> None:
     def fetcher(_target):
         return {"itemCode": "id-1"}
 
-    def applier(normalized, _ctx):
+    def applier(normalized, _ctx, _target):
         applier_calls.append(normalized)
 
     result = service.run_entity_etl(
@@ -150,7 +150,7 @@ def test_run_entity_etl_records_failure() -> None:
     def fetcher(_target):
         raise ValueError("boom")
 
-    def applier(normalized, _ctx):
+    def applier(normalized, _ctx, _target):
         raise AssertionError("should not run")
 
     result = service.run_entity_etl(

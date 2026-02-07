@@ -17,7 +17,7 @@ class Fetcher(Protocol):
 
 
 class Applier(Protocol):
-    def __call__(self, normalized: Mapping[str, Any], ctx: JobContext) -> None: ...
+    def __call__(self, normalized: Mapping[str, Any], ctx: JobContext, target: Target) -> None: ...
 
 
 class TargetProvider(Protocol):
@@ -100,7 +100,7 @@ class EtlService:
                     saved_at=put_result.saved_at,
                 )
                 self._staging_repo.batch_upsert(rows=[row])
-                applier(normalized, ctx)
+                applier(normalized, ctx, target)
                 success_count += 1
             except Exception:
                 failure_count += 1
