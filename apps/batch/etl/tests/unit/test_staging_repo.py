@@ -13,8 +13,11 @@ from repos.staging_repo import StagingRepo, StagingRow  # noqa: E402
 
 
 class FakeCursor:
-    def __init__(self, *, fetchone_value=None, rowcount=0) -> None:
+    def __init__(
+        self, *, fetchone_value=None, fetchall_value=None, rowcount=0
+    ) -> None:
         self.fetchone_value = fetchone_value
+        self.fetchall_value = fetchall_value or []
         self.rowcount = rowcount
         self.executed = []
         self.executed_many = []
@@ -28,6 +31,9 @@ class FakeCursor:
 
     def fetchone(self):
         return self.fetchone_value
+
+    def fetchall(self):
+        return self.fetchall_value
 
     def close(self) -> None:
         self.closed = True
@@ -103,3 +109,17 @@ def test_batch_upsert_inserts_rows_and_commits() -> None:
     assert cursor.executed_many
     sql = cursor.executed_many[0][0]
     assert "on conflict (source, entity, source_id)" in sql
+
+
+@pytest.mark.unit
+def test_fetch_item_source_ids_since_returns_source_ids() -> None:
+    cursor = FakeCursor(fetchall_value=[("shop:1",), ("shop:2",)])
+    repo = StagingRepo(conn=FakeConnection(cursor))
+    since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    result = repo.fetch_item_source_ids_since(since=since)
+
+    assert result == ["shop:1", "shop:2"]
+    assert cursor.executed
+    sql = cursor.executed[0][0]
+    assert "from apl.staging" in sql
