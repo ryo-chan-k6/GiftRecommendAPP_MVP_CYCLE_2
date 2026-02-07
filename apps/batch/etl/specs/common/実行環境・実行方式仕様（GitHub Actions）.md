@@ -30,10 +30,10 @@ GitHub Actions の cron は UTC基準。
 
 ### 3.2 推奨スケジュール（例）
 
-- dev：毎日数回（検証用）
-- prod：毎時 or 1日数回（MVP運用）
+- dev：毎日 00:30 JST（UTCでは 15:30、前日扱い）
+- prod：当面は schedule 実行しない（手動実行のみ）
 
-※ 本番の具体cronは運用で決めるとして、仕様書には「UTCで書く」ことを明記する。
+※ cron は UTC で記述する。
 
 ## 4. Secrets / Variables / Permissions
 
