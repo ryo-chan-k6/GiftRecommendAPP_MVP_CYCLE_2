@@ -13,8 +13,9 @@ from repos.apl.item_repo import ItemRepo  # noqa: E402
 
 
 class FakeCursor:
-    def __init__(self, *, fetchone_values=None) -> None:
+    def __init__(self, *, fetchone_values=None, fetchall_value=None) -> None:
         self.fetchone_values = list(fetchone_values or [])
+        self.fetchall_value = fetchall_value or []
         self.executed = []
         self.executed_many = []
         self.rowcount = 0
@@ -30,6 +31,9 @@ class FakeCursor:
 
     def fetchone(self):
         return self.fetchone_values.pop(0) if self.fetchone_values else None
+
+    def fetchall(self):
+        return self.fetchall_value
 
     def close(self) -> None:
         self.closed = True
@@ -117,3 +121,16 @@ def test_upsert_shop_returns_id() -> None:
 
     assert shop_id == "shop-id"
     assert "on conflict (rakuten_shop_code)" in cursor.executed[0][0]
+
+
+@pytest.mark.unit
+def test_fetch_distinct_genre_ids_by_source_ids_returns_ids() -> None:
+    cursor = FakeCursor(fetchall_value=[(100,), (200,)])
+    repo = ItemRepo(conn=FakeConnection(cursor))
+
+    result = repo.fetch_distinct_genre_ids_by_source_ids(["item-1", "item-2"])
+
+    assert result == [100, 200]
+    assert cursor.executed
+    sql = cursor.executed[0][0]
+    assert "from apl.item" in sql
