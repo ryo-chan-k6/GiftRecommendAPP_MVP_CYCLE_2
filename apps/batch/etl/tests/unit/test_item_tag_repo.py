@@ -12,7 +12,8 @@ from repos.apl.item_tag_repo import ItemTagRepo  # noqa: E402
 
 
 class FakeCursor:
-    def __init__(self) -> None:
+    def __init__(self, *, fetchall_value=None) -> None:
+        self.fetchall_value = fetchall_value or []
         self.executed = []
         self.executed_many = []
         self.rowcount = 0
@@ -27,6 +28,9 @@ class FakeCursor:
 
     def close(self) -> None:
         self.closed = True
+
+    def fetchall(self):
+        return self.fetchall_value
 
 
 class FakeConnection:
@@ -64,3 +68,16 @@ def test_sync_item_tags_handles_empty_tags() -> None:
     assert affected == 0
     assert cursor.executed
     assert cursor.executed_many == []
+
+
+@pytest.mark.unit
+def test_fetch_distinct_tag_ids_by_source_ids_returns_ids() -> None:
+    cursor = FakeCursor(fetchall_value=[(1,), (2,)])
+    repo = ItemTagRepo(conn=FakeConnection(cursor))
+
+    result = repo.fetch_distinct_tag_ids_by_source_ids(["item-1", "item-2"])
+
+    assert result == [1, 2]
+    assert cursor.executed
+    sql = cursor.executed[0][0]
+    assert "from apl.item_tag" in sql
