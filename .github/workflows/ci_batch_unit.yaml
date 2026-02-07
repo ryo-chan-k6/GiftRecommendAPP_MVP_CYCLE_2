@@ -1,7 +1,13 @@
 name: Batch Unit CI
 on:
+    push:
+        branches-ignore:
+            - main
     pull_request:
         types: [opened, synchronize, reopened]
+permissions:
+    contents: read
+    pull-requests: write
 jobs:
     unit:
         runs-on: ubuntu-latest
@@ -23,3 +29,36 @@ jobs:
             - name: Run tests
               working-directory: apps/batch/etl
               run: pytest -m "unit"
+    create-pr:
+        needs: unit
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Create PR when missing
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                BASE_BRANCH: ${{ github.event.repository.default_branch }}
+                HEAD_BRANCH: ${{ github.ref_name }}
+              run: |
+                set -euo pipefail
+
+                existing_count=$(gh pr list --head "${HEAD_BRANCH}" --state open --json number --jq 'length')
+                if [ "${existing_count}" -gt 0 ]; then
+                  echo "PR already exists for ${HEAD_BRANCH}. Skipping."
+                  exit 0
+                fi
+
+                ahead_by=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${HEAD_BRANCH}" --jq '.ahead_by')
+                if [ "${ahead_by}" -eq 0 ]; then
+                  echo "No commits ahead of ${BASE_BRANCH} on ${HEAD_BRANCH}. Skipping."
+                  exit 0
+                fi
+
+                gh pr create \
+                  --base "${BASE_BRANCH}" \
+                  --head "${HEAD_BRANCH}" \
+                  --title "Auto PR: ${HEAD_BRANCH}" \
+                  --body "Auto-created PR for branch ${HEAD_BRANCH}."
