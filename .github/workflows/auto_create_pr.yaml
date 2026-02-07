@@ -31,6 +31,12 @@ jobs:
             exit 0
           fi
 
+          ahead_by=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${HEAD_BRANCH}" --jq '.ahead_by')
+          if [ "${ahead_by}" -eq 0 ]; then
+            echo "No commits ahead of ${BASE_BRANCH} on ${HEAD_BRANCH}. Skipping."
+            exit 0
+          fi
+
           gh pr create \
             --base "${BASE_BRANCH}" \
             --head "${HEAD_BRANCH}" \
