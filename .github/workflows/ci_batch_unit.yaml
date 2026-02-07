@@ -1,5 +1,8 @@
 name: Batch Unit CI
 on:
+    push:
+        branches-ignore:
+            - main
     pull_request:
         types: [opened, synchronize, reopened]
 jobs:
