@@ -19,6 +19,7 @@ class StagingRow:
 class Cursor(Protocol):
     def execute(self, query: str, params: Sequence[object] | None = None) -> None: ...
     def executemany(self, query: str, params_seq: Sequence[Sequence[object]]) -> None: ...
+    def fetchall(self) -> Sequence[Sequence[object]]: ...
     def fetchone(self) -> Optional[Sequence[object]]: ...
     @property
     def rowcount(self) -> int: ...
@@ -84,3 +85,18 @@ class StagingRepo:
             cur.close()
         self._conn.commit()
         return affected
+
+    def fetch_item_source_ids_since(self, *, since: datetime) -> Sequence[str]:
+        sql = (
+            "select distinct source_id "
+            "from apl.staging "
+            "where source = %s and entity = %s and saved_at >= %s "
+            "order by source_id"
+        )
+        cur = self._conn.cursor()
+        try:
+            cur.execute(sql, ("rakuten", "item", since))
+            rows = cur.fetchall()
+        finally:
+            cur.close()
+        return [row[0] for row in rows]
