@@ -6,6 +6,7 @@ from typing import Protocol, Sequence
 class Cursor(Protocol):
     def execute(self, query: str, params: Sequence[object] | None = None) -> None: ...
     def executemany(self, query: str, params_seq: Sequence[Sequence[object]]) -> None: ...
+    def fetchall(self) -> Sequence[Sequence[object]]: ...
     @property
     def rowcount(self) -> int: ...
     def close(self) -> None: ...
@@ -40,3 +41,22 @@ class ItemTagRepo:
             cur.close()
         self._conn.commit()
         return affected
+
+    def fetch_distinct_tag_ids_by_source_ids(self, source_ids: Sequence[str]) -> Sequence[int]:
+        if not source_ids:
+            return []
+        sql = (
+            "select distinct it.rakuten_tag_id "
+            "from apl.item_tag it "
+            "join apl.item i on i.id = it.item_id "
+            "where i.rakuten_item_code = any(%s) "
+            "and it.rakuten_tag_id is not null "
+            "order by it.rakuten_tag_id"
+        )
+        cur = self._conn.cursor()
+        try:
+            cur.execute(sql, (list(source_ids),))
+            rows = cur.fetchall()
+        finally:
+            cur.close()
+        return [row[0] for row in rows]
