@@ -167,3 +167,46 @@ def test_applier_enriches_items_and_inserts(monkeypatch) -> None:
     assert genre_id == 100
     assert items[0]["title"] == "Ranking"
     assert items[0]["lastBuildDate"] == "2026-01-01T00:00:00+09:00"
+
+
+@pytest.mark.unit
+def test_applier_handles_capitalized_items(monkeypatch) -> None:
+    monkeypatch.setattr(ranking_job, "TargetGenreConfigRepo", FakeTargetGenreConfigRepo)
+    monkeypatch.setattr(ranking_job, "StagingRepo", FakeStagingRepo)
+    monkeypatch.setattr(ranking_job, "RankRepo", FakeRankRepo)
+    monkeypatch.setattr(ranking_job, "RawStore", FakeRawStore)
+    monkeypatch.setattr(ranking_job, "RakutenClient", FakeRakutenClient)
+    monkeypatch.setattr(ranking_job, "EtlService", FakeEtlService)
+    monkeypatch.setattr(ranking_job, "db_connection", fake_db_connection)
+
+    config = AppConfig(
+        env="dev",
+        database_url="postgres://example",
+        rakuten_app_id="app",
+        rakuten_affiliate_id=None,
+        s3_bucket_raw="bucket",
+        aws_region="ap-northeast-1",
+    )
+
+    ranking_job.run_job(config=config, run_id="run-1", dry_run=False)
+    service = FakeEtlService.last_instance
+    applier = service.run_args["applier"]
+    ctx = service.run_args["ctx"]
+
+    rank_repo = FakeRankRepo.last_instance
+
+    normalized = {
+        "title": "Ranking",
+        "lastBuildDate": "2026-01-01T00:00:00+09:00",
+        "Items": [{"Item": {"rank": 1, "itemCode": "shop:1"}}],
+    }
+
+    applier(normalized, ctx, "100")
+
+    assert rank_repo.calls
+    run_id, genre_id, items = rank_repo.calls[-1]
+    assert run_id == "run-1"
+    assert genre_id == 100
+    assert items[0]["itemCode"] == "shop:1"
+    assert items[0]["title"] == "Ranking"
+    assert items[0]["lastBuildDate"] == "2026-01-01T00:00:00+09:00"

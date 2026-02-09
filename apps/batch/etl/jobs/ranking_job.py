@@ -53,6 +53,8 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
         def applier(normalized: Mapping[str, Any], job_ctx: JobContext, target: str) -> None:
             items = normalized.get("items")
             if not isinstance(items, list):
+                items = normalized.get("Items")
+            if not isinstance(items, list):
                 items = []
             title = normalized.get("title")
             last_build_date = normalized.get("lastBuildDate")
@@ -60,7 +62,10 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             for item in items:
                 if not isinstance(item, dict):
                     continue
-                entry = dict(item)
+                entry = item.get("Item") if "Item" in item else item
+                if not isinstance(entry, dict):
+                    continue
+                entry = dict(entry)
                 if title is not None and "title" not in entry:
                     entry["title"] = title
                 if last_build_date is not None and "lastBuildDate" not in entry:
