@@ -183,3 +183,54 @@ jobs:
           ENV: ${{ env.TARGET_ENV || 'prod' }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python -m jobs.is_active_job
+
+  job_embedding_source:
+    runs-on: ubuntu-latest
+    needs: [job_is_active]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13.3
+
+      - name: Install dependencies
+        working-directory: apps/batch
+        run: pip install -r requirements.txt
+
+      - name: Run JOB-E-01
+        working-directory: apps/batch/etl
+        env:
+          ENV: ${{ env.TARGET_ENV || 'prod' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m jobs.embedding_source_job
+
+  job_embedding_build:
+    runs-on: ubuntu-latest
+    needs: [job_embedding_source]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13.3
+
+      - name: Install dependencies
+        working-directory: apps/batch
+        run: pip install -r requirements.txt
+
+      - name: Run JOB-E-02
+        working-directory: apps/batch/etl
+        env:
+          ENV: ${{ env.TARGET_ENV || 'prod' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_EMBEDDING_MODEL: ${{ secrets.OPENAI_EMBEDDING_MODEL }}
+          OPENAI_TIMEOUT_SEC: ${{ secrets.OPENAI_TIMEOUT_SEC }}
+          OPENAI_MAX_RETRIES: ${{ secrets.OPENAI_MAX_RETRIES }}
+          OPENAI_BACKOFF_BASE_SEC: ${{ secrets.OPENAI_BACKOFF_BASE_SEC }}
+        run: python -m jobs.embedding_build_job
