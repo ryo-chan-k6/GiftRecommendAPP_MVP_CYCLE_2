@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 import uuid
 from pathlib import Path
 from typing import Any
 
-from core.config import AppConfig, load_config
 from core.logging import get_logger
 from repos.db import db_connection, transaction
 
 JOB_ID = "JOB-A-01"
 
 
-def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = False) -> dict:
+def run_job(*, database_url: str, run_id: str | None = None, dry_run: bool = False) -> dict:
     job_run_id = run_id or uuid.uuid4().hex
     logger = get_logger(job_id=JOB_ID, run_id=job_run_id)
 
@@ -21,7 +21,7 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
         return {"updated": 0}
 
     sql = _load_sql()
-    with db_connection(database_url=config.database_url) as conn:
+    with db_connection(database_url=database_url) as conn:
         with transaction(conn):
             cur = conn.cursor()
             try:
@@ -44,8 +44,10 @@ def main() -> int:
     parser.add_argument("--run-id", dest="run_id", default=None)
     args = parser.parse_args()
 
-    config = load_config()
-    run_job(config=config, run_id=args.run_id, dry_run=args.dry_run)
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise ValueError("Missing required env var: DATABASE_URL")
+    run_job(database_url=database_url, run_id=args.run_id, dry_run=args.dry_run)
     return 0
 
 
