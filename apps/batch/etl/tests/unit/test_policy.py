@@ -97,6 +97,7 @@ def test_targets_item_codes_uses_job_start_at() -> None:
 @pytest.mark.unit
 def test_targets_genre_ids_from_today_items_short_circuit_on_empty() -> None:
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    expected_since = datetime(2026, 1, 1, tzinfo=timezone.utc)
     ctx = JobContext(
         job_id="job-g-01",
         env="dev",
@@ -113,13 +114,14 @@ def test_targets_genre_ids_from_today_items_short_circuit_on_empty() -> None:
     )
 
     assert result == []
-    assert staging_repo.calls == [started_at]
+    assert staging_repo.calls == [expected_since]
     assert item_repo.calls == []
 
 
 @pytest.mark.unit
 def test_targets_tag_ids_from_today_items_uses_source_ids() -> None:
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    expected_since = datetime(2026, 1, 1, tzinfo=timezone.utc)
     ctx = JobContext(
         job_id="job-t-01",
         env="dev",
@@ -136,5 +138,5 @@ def test_targets_tag_ids_from_today_items_uses_source_ids() -> None:
     )
 
     assert result == [10, 20]
-    assert staging_repo.calls == [started_at]
+    assert staging_repo.calls == [expected_since]
     assert item_tag_repo.calls == [["s1", "s2"]]
