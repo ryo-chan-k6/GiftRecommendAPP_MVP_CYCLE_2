@@ -253,11 +253,13 @@ CREATE TABLE IF NOT EXISTS apl.item_embedding (
   item_id uuid NOT NULL REFERENCES apl.item(id),
   model varchar NOT NULL,
   embedding vector NOT NULL,
+  source_hash varchar NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (item_id, model)
 );
 CREATE INDEX IF NOT EXISTS idx_apl_item_embedding_model ON apl.item_embedding (model);
+CREATE INDEX IF NOT EXISTS idx_apl_item_embedding_source_hash ON apl.item_embedding (source_hash);
 
 -- ------------------------------------------------------------
 -- apl (推薦・お気に入り)

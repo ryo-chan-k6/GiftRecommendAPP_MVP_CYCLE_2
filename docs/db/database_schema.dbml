@@ -444,6 +444,7 @@ Table "apl.item_embedding" {
   item_id uuid [not null, ref: > "apl.item".id]
   model varchar [not null]
   embedding vector [not null]
+  source_hash varchar
 
   created_at timestamptz [not null, default: "now()"]
   updated_at timestamptz [not null, default: "now()"]
@@ -451,6 +452,7 @@ Table "apl.item_embedding" {
   indexes {
     (item_id, model) [pk]
     (model)
+    (source_hash)
   }
 }
 
