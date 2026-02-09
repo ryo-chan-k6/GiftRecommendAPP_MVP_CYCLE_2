@@ -9,7 +9,6 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 
-from core.config import AppConfig  # noqa: E402
 from jobs import is_active_job  # noqa: E402
 
 
@@ -59,16 +58,7 @@ def test_run_job_executes_update(monkeypatch) -> None:
     monkeypatch.setattr(is_active_job, "transaction", fake_transaction)
     monkeypatch.setattr(is_active_job, "_load_sql", lambda: "update apl.item set is_active = true")
 
-    config = AppConfig(
-        env="dev",
-        database_url="postgres://example",
-        rakuten_app_id="app",
-        rakuten_affiliate_id=None,
-        s3_bucket_raw="bucket",
-        aws_region="ap-northeast-1",
-    )
-
-    result = is_active_job.run_job(config=config, run_id="run-1", dry_run=False)
+    result = is_active_job.run_job(database_url="postgres://example", run_id="run-1", dry_run=False)
 
     assert result["updated"] == 3
 
@@ -77,15 +67,6 @@ def test_run_job_executes_update(monkeypatch) -> None:
 def test_run_job_skips_on_dry_run(monkeypatch) -> None:
     monkeypatch.setattr(is_active_job, "db_connection", fake_db_connection)
 
-    config = AppConfig(
-        env="dev",
-        database_url="postgres://example",
-        rakuten_app_id="app",
-        rakuten_affiliate_id=None,
-        s3_bucket_raw="bucket",
-        aws_region="ap-northeast-1",
-    )
-
-    result = is_active_job.run_job(config=config, run_id="run-1", dry_run=True)
+    result = is_active_job.run_job(database_url="postgres://example", run_id="run-1", dry_run=True)
 
     assert result == {"updated": 0}
