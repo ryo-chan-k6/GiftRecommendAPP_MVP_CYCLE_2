@@ -80,10 +80,14 @@ def _extract_item_payload(normalized: Mapping[str, Any]) -> Mapping[str, Any] | 
     if "itemCode" in normalized:
         return normalized
     items = normalized.get("items")
+    if not isinstance(items, list):
+        items = normalized.get("Items")
     if isinstance(items, list) and items:
         first = items[0]
         if isinstance(first, Mapping):
-            return first
+            payload = first.get("Item") if "Item" in first else first
+            if isinstance(payload, Mapping):
+                return payload
     return None
 
 
