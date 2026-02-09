@@ -35,7 +35,8 @@ def targets_ranking_genre_ids(
 def targets_item_codes(
     ctx: JobContext, *, rank_snapshot_repo: RankSnapshotRepo
 ) -> Iterable[str]:
-    return list(rank_snapshot_repo.fetch_distinct_item_codes_since(since=ctx.job_start_at))
+    since = ctx.job_start_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    return list(rank_snapshot_repo.fetch_distinct_item_codes_since(since=since))
 
 
 def targets_genre_ids_from_today_items(

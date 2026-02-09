@@ -79,6 +79,7 @@ def test_targets_ranking_genre_ids_returns_enabled_ids() -> None:
 @pytest.mark.unit
 def test_targets_item_codes_uses_job_start_at() -> None:
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    expected_since = datetime(2026, 1, 1, tzinfo=timezone.utc)
     ctx = JobContext(
         job_id="job-i-01",
         env="dev",
@@ -90,7 +91,7 @@ def test_targets_item_codes_uses_job_start_at() -> None:
     result = list(policy.targets_item_codes(ctx, rank_snapshot_repo=repo))
 
     assert result == ["a", "b"]
-    assert repo.calls == [started_at]
+    assert repo.calls == [expected_since]
 
 
 @pytest.mark.unit
