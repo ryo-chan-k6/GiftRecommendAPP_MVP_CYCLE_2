@@ -173,3 +173,42 @@ def test_applier_updates_item_and_tags(monkeypatch) -> None:
     assert item_repo.calls[3][0] == "market"
     assert item_repo.calls[4][0] == "review"
     assert tag_repo.calls == [("item-id", [1, 2])]
+
+
+@pytest.mark.unit
+def test_applier_handles_capitalized_items(monkeypatch) -> None:
+    monkeypatch.setattr(item_job, "RankRepo", FakeRankRepo)
+    monkeypatch.setattr(item_job, "StagingRepo", FakeStagingRepo)
+    monkeypatch.setattr(item_job, "ItemRepo", FakeItemRepo)
+    monkeypatch.setattr(item_job, "ItemTagRepo", FakeItemTagRepo)
+    monkeypatch.setattr(item_job, "RawStore", FakeRawStore)
+    monkeypatch.setattr(item_job, "RakutenClient", FakeRakutenClient)
+    monkeypatch.setattr(item_job, "EtlService", FakeEtlService)
+    monkeypatch.setattr(item_job, "db_connection", fake_db_connection)
+
+    config = AppConfig(
+        env="dev",
+        database_url="postgres://example",
+        rakuten_app_id="app",
+        rakuten_affiliate_id=None,
+        s3_bucket_raw="bucket",
+        aws_region="ap-northeast-1",
+    )
+
+    item_job.run_job(config=config, run_id="run-1", dry_run=False)
+    service = FakeEtlService.last_instance
+    applier = service.run_args["applier"]
+    ctx = service.run_args["ctx"]
+
+    normalized = {"Items": [{"Item": {"itemCode": "shop:1", "tagIds": [1, 2]}}]}
+    applier(normalized, ctx, "shop:1")
+
+    item_repo = FakeItemRepo.last_instance
+    tag_repo = FakeItemTagRepo.last_instance
+
+    assert item_repo.calls[0][0] == "shop"
+    assert item_repo.calls[1][0] == "item"
+    assert item_repo.calls[2][0] == "images"
+    assert item_repo.calls[3][0] == "market"
+    assert item_repo.calls[4][0] == "review"
+    assert tag_repo.calls == [("item-id", [1, 2])]
