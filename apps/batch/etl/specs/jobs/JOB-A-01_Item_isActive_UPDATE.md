@@ -36,7 +36,7 @@ is_active はこのジョブだけが更新する。
 
 ### 3.1 前提ジョブ（必須）
 
-- JOB-R-01（Item ETL）
+- JOB-R-01（Ranking ETL）
 - JOB-I-01（Item ETL）
 - JOB-G-01（Genre ETL）
 - JOB-T-01（Tag ETL）

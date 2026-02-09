@@ -70,7 +70,7 @@ join apl.item i
   on i.rakuten_item_code = s.source_id
 where s.source = 'rakuten'
   and s.entity = 'item'
-  and s.saved_at >= :job_start_at
+and s.saved_at >= :day_start
   and i.rakuten_genre_id is not null;
 ```
 
@@ -79,6 +79,7 @@ where s.source = 'rakuten'
 - DISTINCT rakuten_genre_id
 - NULL除外
 - 対象は「当日（＝本ジョブ実行対象として更新された）item」に限定
+  - `:day_start` は `job_start_at` の当日0:00（UTC）を採用
 
 「当日処理対象の item に紐づく genre のみを取得する」
 ＝ 不要な全ジャンルクロールをしない、かつ stagingを“当日集合の定義”として正しく利用する
@@ -185,7 +186,7 @@ where s.source = 'rakuten'
 | DB | apl.item | rakuten_genre_id | itemCode に紐づく genreId 取得 |
 
 条件：
-- apl.staging: `source='rakuten' AND entity='item' AND saved_at >= :job_start_at`
+- apl.staging: `source='rakuten' AND entity='item' AND saved_at >= :day_start`
 - apl.item: `rakuten_genre_id IS NOT NULL`
 
 ### 2. 入力（API）

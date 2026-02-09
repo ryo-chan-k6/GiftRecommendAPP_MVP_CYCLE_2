@@ -1,4 +1,4 @@
-# 外部API仕様要約（楽天API差分）
+# 外部API仕様要約（楽天 + OpenAI）
 
 ## 0. 対象API（MVP ETLで利用）
 
@@ -8,6 +8,7 @@
 | JOB-I-01 Item ETL | Ichiba Item Search API | itemCode → 商品詳細を取得し item / item_tag を更新 |
 | JOB-G-01 Genre ETL | Ichiba Genre Search API | genreId → ジャンル階層情報を取得し genre を更新 |
 | JOB-T-01 Tag ETL | Ichiba Tag Search API | tagId → タグ階層情報を取得し tag_group / tag を更新 |
+| JOB-E-02 Embedding Build | OpenAI Embeddings API | source_text → embedding を生成 |
 
 ## 1. 共通仕様（全APIで共通）
 
@@ -57,9 +58,9 @@
 | 分類 | フィールド例 |
 | --- | --- |
 | 全体 | title, lastBuildDate |
-| items配列（各rank） | rank, itemCode, itemName, itemPrice, itemUrl, affiliateUrl, smallImageUrls, mediumImageUrls, availability など |
+| items/Items配列（各rank） | rank, itemCode, itemName, itemPrice, itemUrl, affiliateUrl, smallImageUrls, mediumImageUrls, availability など |
 
-※ formatVersion=2 の配列名は `items`（小文字）。`Items` ではない点に注意。
+※ 実際のレスポンスは `Items` / `Item`（大文字）になるケースがあり、実装側で両方を許容する。
 
 #### JSONレスポンスサンプル（formatVersion=2の構造例）
 
@@ -115,8 +116,7 @@
 **レスポンス形式（構造）**
 
 - ページング系：count, page, first, last, hits, pageCount
-- items配列に item 詳細（非常に多い）
-- formatVersion=2 の配列名は `items`（小文字）
+- items/Items配列に item 詳細（非常に多い）
 
 #### JSONレスポンスサンプル（formatVersion=2の構造例）
 
@@ -129,8 +129,9 @@
   "hits": 1,
   "carrier": 0,
   "pageCount": 1,
-  "items": [
+  "Items": [
     {
+      "Item": {
       "itemName": "サンプル商品A",
       "catchcopy": "キャッチコピー",
       "itemCode": "shop:123456",
@@ -152,10 +153,13 @@
       "reviewCount": 10,
       "reviewAverage": 4.4,
       "pointRate": 1
+      }
     }
   ]
 }
 ```
+
+※ 実際のレスポンスは `Items` / `Item`（大文字）になるケースがあり、実装側で両方を許容する。
 
 > 注: Item Search API の出力パラメータは非常に多いため、上記はETLで参照しやすい代表項目のみを載せています（raw保存は全量・DB反映は必要項目だけ参照の方針）。
 
@@ -269,6 +273,25 @@
   }
 }
 ```
+
+### 2.5 OpenAI Embeddings API（JOB-E-02）
+
+**Endpoint**
+
+`https://api.openai.com/v1/embeddings`
+
+**認証**
+
+- `Authorization: Bearer <OPENAI_API_KEY>`
+
+**主要入力**
+
+- `model`（例：`text-embedding-3-small`）
+- `input`（source_text）
+
+**レスポンス**
+
+- `data[0].embedding` にベクトル配列が返る
 
 
 ## 3. エラーパターン（共通＋API固有）

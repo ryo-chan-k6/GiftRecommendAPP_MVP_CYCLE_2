@@ -74,12 +74,13 @@ join apl.item_tag it
   on it.item_id = i.id
 where s.source = 'rakuten'
   and s.entity = 'item'
-  and s.saved_at >= :job_start_at
+and s.saved_at >= :day_start
   and it.rakuten_tag_id is not null;
 ```
 
 「当日更新された item に実際に付与された tag だけ」を対象とする  
 ＝ 無駄な全タグクロールをしない
+  - `:day_start` は `job_start_at` の当日0:00（UTC）を採用
 
 ## 5. 処理フロー
 
@@ -192,7 +193,7 @@ where s.source = 'rakuten'
 
 条件：
 
-- apl.staging：`source='rakuten' AND entity='item' AND saved_at >= :job_start_at`
+- apl.staging：`source='rakuten' AND entity='item' AND saved_at >= :day_start`
 - apl.item_tag：`rakuten_tag_id IS NOT NULL`
 
 ### 2. 入力（API）

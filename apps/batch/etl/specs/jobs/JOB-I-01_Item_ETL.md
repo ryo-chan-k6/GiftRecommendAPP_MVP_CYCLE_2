@@ -62,7 +62,7 @@
 
 優先順位付きで入力集合を定義する。
 
-- 第一候補（推奨）：apl.item_rank_snapshot から当日（または最新run）に登場した rakuten_item_code を抽出
+- 第一候補（推奨）：apl.item_rank_snapshot から当日（0:00以降）に登場した rakuten_item_code を抽出
 - 第二候補：ランキングETLが出力した rakuten_item_code を別途キュー/テーブルで受ける（将来拡張）
 - 第三候補（保険）：手動で rakuten_item_code を渡す（CLI引数）
 
@@ -73,6 +73,7 @@
 - 取得件数：上限 N（例：ランキング上位×カテゴリ数）
 - 重複排除：DISTINCT rakuten_item_code
 - 並び順：rank昇順、取得時間降順 等（運用で決める）
+- 抽出条件（MVP）：item_rank_snapshot.fetched_at が当日0:00以降
 
 ※ 正確なSQLは apl.item_rank_snapshot のカラム設計に依存するため、**「入力SQLは差し替え可能」**として interface を固定する（C-2でpolicyに逃がす）。
 
@@ -123,40 +124,44 @@
   "pageCount": 5,
   "Items": [
     {
-      "itemCode": "shopCode:itemId",
-      "itemName": "...",
-      "catchcopy": "...",
-      "itemCaption": "...",
-      "itemPrice": 1234,
-      "itemUrl": "https://...",
-      "affiliateUrl": "https://...",
-      "imageFlag": 1,
-      "smallImageUrls": ["https://..."],
-      "mediumImageUrls": ["https://..."],
-      "availability": 1,
-      "taxFlag": 0,
-      "postageFlag": 0,
-      "creditCardFlag": 1,
-      "shopCode": "...",
-      "shopName": "...",
-      "shopUrl": "https://...",
-      "genreId": 100000,
-      "tagIds": [111, 222],
-      "reviewCount": 10,
-      "reviewAverage": 4.23,
-      "pointRate": 2,
-      "pointRateStartTime": "...",
-      "pointRateEndTime": "...",
-      "startTime": "...",
-      "endTime": "...",
-      "giftFlag": 1,
-      "asurakuFlag": 0,
-      "asurakuArea": "...",
-      "asurakuClosingTime": "..."
+      "Item": {
+        "itemCode": "shopCode:itemId",
+        "itemName": "...",
+        "catchcopy": "...",
+        "itemCaption": "...",
+        "itemPrice": 1234,
+        "itemUrl": "https://...",
+        "affiliateUrl": "https://...",
+        "imageFlag": 1,
+        "smallImageUrls": ["https://..."],
+        "mediumImageUrls": ["https://..."],
+        "availability": 1,
+        "taxFlag": 0,
+        "postageFlag": 0,
+        "creditCardFlag": 1,
+        "shopCode": "...",
+        "shopName": "...",
+        "shopUrl": "https://...",
+        "genreId": 100000,
+        "tagIds": [111, 222],
+        "reviewCount": 10,
+        "reviewAverage": 4.23,
+        "pointRate": 2,
+        "pointRateStartTime": "...",
+        "pointRateEndTime": "...",
+        "startTime": "...",
+        "endTime": "...",
+        "giftFlag": 1,
+        "asurakuFlag": 0,
+        "asurakuArea": "...",
+        "asurakuClosingTime": "..."
+      }
     }
   ]
 }
 ```
+
+※ 実際のレスポンスは `Items / Item`（大文字）になるケースがあり、実装側で両方を受け付ける。
 
 ## 6. 正規化（normalize）仕様
 

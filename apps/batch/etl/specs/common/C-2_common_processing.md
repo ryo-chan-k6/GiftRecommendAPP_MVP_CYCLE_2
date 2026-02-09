@@ -14,6 +14,7 @@
 - JOB-G-01 Genre ETL
 - JOB-T-01 Tag ETL
 - JOB-A-01 is_active 更新（※S3/stagingを使わないが共通SQLとして規定）
+- JOB-E-01 / JOB-E-02（※ETL骨格は使わず専用フローで実装）
 
 ## 1. 共通アーキテクチャ（論理）
 
@@ -75,8 +76,8 @@ class JobContext:
 **仕様（重要）**
 
 - job_start_at は handler 起動時に必ず確定し、policyに渡す
-- 「当日更新分」は saved_at >= :job_start_at を基本とする
-- これにより、同一run内の生成物を後続が参照できる（ジョブネット整合）
+- 「当日更新分」は saved_at >= :day_start を基本とする
+- :day_start は job_start_at の当日0:00（UTC）
 
 ## 4. 共通I/F（Pythonシグネチャ）
 
@@ -278,7 +279,7 @@ class Fetcher(Protocol):
     def __call__(self, target: Target) -> Mapping[str, Any]: ...
 
 class Applier(Protocol):
-    def __call__(self, normalized: Mapping[str, Any], ctx: JobContext) -> None: ...
+    def __call__(self, normalized: Mapping[str, Any], ctx: JobContext, target: Target) -> None: ...
 
 class TargetProvider(Protocol):
     def __call__(self, ctx: JobContext) -> Iterable[Target]: ...
@@ -330,7 +331,7 @@ class EtlService:
 - apl.staging(entity=item) を当日更新分集合の定義に使う
 - 属性（genreId/tagIdなど）は staging単体では持たないため、aplテーブルとJOINする
 - job_start_at は UTC の timestamptz（秒精度）として扱う
-- staging抽出は s.saved_at >= job_start_at を基準とする（tzはUTCで統一）
+- staging抽出は s.saved_at >= day_start を基準とする（tzはUTCで統一）
 
 **性能前提（index）**
 
@@ -355,9 +356,9 @@ def targets_tag_ids_from_today_items(ctx: JobContext) -> Iterable[str]:
     ...
 ```
 
-## 6. 共通SQL仕様（3本）
+## 6. 共通SQL仕様（4本）
 
-以降のSQLは `collector/sql/common/` に配置する。
+以降のSQLは `apps/batch/etl/sql/common/` に配置する。
 
 ### 6.1 staging hash存在チェック
 
@@ -451,6 +452,13 @@ where i.id = c.id
 
 - tagは条件に含めない（MVP）
 - updated_at は変更行のみ更新
+
+### 6.4 Embedding差分抽出
+
+**embedding_source_diff_select.sql**（JOB-E-02で使用）
+
+**目的**  
+`apl.item_embedding_source` と `apl.item_embedding` を比較し、差分対象を抽出する
 
 ## 7. エラー / リトライ / 冪等性（MVP方針）
 
