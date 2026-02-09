@@ -45,7 +45,15 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
         )
 
         def target_provider(job_ctx: JobContext):
-            return policy.targets_item_codes(job_ctx, rank_snapshot_repo=rank_repo)
+            targets = list(policy.targets_item_codes(job_ctx, rank_snapshot_repo=rank_repo))
+            logger.info(
+                "item targets from ranking: count=%s since=%s",
+                len(targets),
+                job_ctx.job_start_at,
+            )
+            if targets:
+                logger.debug("item target sample: %s", targets[:5])
+            return targets
 
         def fetcher(target: str) -> Mapping[str, Any]:
             return client.fetch_item(item_code=target)
