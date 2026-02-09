@@ -35,8 +35,8 @@ class FakeRankRepo:
         self.calls = []
         FakeRankRepo.last_instance = self
 
-    def insert_rank_snapshot(self, *, run_id: str, genre_id: int, ranking_items):
-        self.calls.append((run_id, genre_id, ranking_items))
+    def insert_rank_snapshot(self, *, run_id: str, genre_id: int, ranking_items, fetched_at):
+        self.calls.append((run_id, genre_id, ranking_items, fetched_at))
         return len(ranking_items)
 
 
@@ -162,9 +162,10 @@ def test_applier_enriches_items_and_inserts(monkeypatch) -> None:
     applier(normalized, ctx, "100")
 
     assert rank_repo.calls
-    run_id, genre_id, items = rank_repo.calls[0]
+    run_id, genre_id, items, fetched_at = rank_repo.calls[0]
     assert run_id == "run-1"
     assert genre_id == 100
+    assert fetched_at == ctx.job_start_at
     assert items[0]["title"] == "Ranking"
     assert items[0]["lastBuildDate"] == "2026-01-01T00:00:00+09:00"
 
@@ -204,9 +205,10 @@ def test_applier_handles_capitalized_items(monkeypatch) -> None:
     applier(normalized, ctx, "100")
 
     assert rank_repo.calls
-    run_id, genre_id, items = rank_repo.calls[-1]
+    run_id, genre_id, items, fetched_at = rank_repo.calls[-1]
     assert run_id == "run-1"
     assert genre_id == 100
+    assert fetched_at == ctx.job_start_at
     assert items[0]["itemCode"] == "shop:1"
     assert items[0]["title"] == "Ranking"
     assert items[0]["lastBuildDate"] == "2026-01-01T00:00:00+09:00"

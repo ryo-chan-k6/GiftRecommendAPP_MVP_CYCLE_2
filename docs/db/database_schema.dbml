@@ -228,6 +228,7 @@ Table "apl.item_rank_snapshot" {
   id uuid [pk, default: `gen_random_uuid()`]
   rakuten_item_code varchar [not null]
   collected_at timestamptz [not null]
+  fetched_at timestamptz [not null, default: "now()"]
   rakuten_genre_id bigint
   title varchar [null]
   last_build_date timestamptz [not null]
@@ -238,6 +239,7 @@ Table "apl.item_rank_snapshot" {
   indexes {
     (rakuten_genre_id, rakuten_item_code, collected_at) [unique]
     (collected_at)
+    (fetched_at)
     (rakuten_genre_id, collected_at)
     (rakuten_genre_id, rank, collected_at)
   }

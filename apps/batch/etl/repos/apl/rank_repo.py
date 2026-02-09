@@ -27,13 +27,14 @@ class RankRepo:
         run_id: str,
         genre_id: int,
         ranking_items: Sequence[Mapping[str, Any]],
+        fetched_at,
     ) -> int:
         if not ranking_items:
             return 0
         sql = (
             "insert into apl.item_rank_snapshot "
-            "(rakuten_item_code, collected_at, rakuten_genre_id, title, last_build_date, rank) "
-            "values (%s, %s, %s, %s, %s, %s) "
+            "(rakuten_item_code, collected_at, fetched_at, rakuten_genre_id, title, last_build_date, rank) "
+            "values (%s, %s, %s, %s, %s, %s, %s) "
             "on conflict (rakuten_genre_id, rakuten_item_code, collected_at) do nothing"
         )
         params = []
@@ -45,7 +46,9 @@ class RankRepo:
             collected_at = last_build_date
             title = _pick(item, ("title",))
             rank = item.get("rank")
-            params.append((item_code, collected_at, genre_id, title, last_build_date, rank))
+            params.append(
+                (item_code, collected_at, fetched_at, genre_id, title, last_build_date, rank)
+            )
         cur = self._conn.cursor()
         try:
             cur.executemany(sql, params)
@@ -59,7 +62,7 @@ class RankRepo:
         sql = (
             "select distinct rakuten_item_code "
             "from apl.item_rank_snapshot "
-            "where collected_at >= %s "
+            "where fetched_at >= %s "
             "order by rakuten_item_code"
         )
         cur = self._conn.cursor()

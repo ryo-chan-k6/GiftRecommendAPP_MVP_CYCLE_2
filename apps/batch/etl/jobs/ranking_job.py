@@ -74,7 +74,10 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             if not enriched:
                 return
             rank_repo.insert_rank_snapshot(
-                run_id=job_ctx.run_id, genre_id=int(target), ranking_items=enriched
+                run_id=job_ctx.run_id,
+                genre_id=int(target),
+                ranking_items=enriched,
+                fetched_at=job_ctx.job_start_at,
             )
 
         return service.run_entity_etl(

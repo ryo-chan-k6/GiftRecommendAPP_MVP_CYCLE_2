@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS apl.item_rank_snapshot (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   rakuten_item_code varchar NOT NULL,
   collected_at timestamptz NOT NULL,
+  fetched_at timestamptz NOT NULL DEFAULT now(),
   rakuten_genre_id bigint NULL,
   title varchar NULL,
   last_build_date timestamptz NOT NULL,
@@ -88,6 +89,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_apl_item_rank_snapshot_genre_item_collected
   ON apl.item_rank_snapshot (rakuten_genre_id, rakuten_item_code, collected_at);
 CREATE INDEX IF NOT EXISTS idx_apl_item_rank_snapshot_collected
   ON apl.item_rank_snapshot (collected_at);
+CREATE INDEX IF NOT EXISTS idx_apl_item_rank_snapshot_fetched
+  ON apl.item_rank_snapshot (fetched_at);
 CREATE INDEX IF NOT EXISTS idx_apl_item_rank_snapshot_genre_collected
   ON apl.item_rank_snapshot (rakuten_genre_id, collected_at);
 CREATE INDEX IF NOT EXISTS idx_apl_item_rank_snapshot_genre_rank_collected
