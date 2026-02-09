@@ -66,7 +66,10 @@ def test_insert_rank_snapshot_inserts_items() -> None:
     ]
 
     affected = repo.insert_rank_snapshot(
-        run_id="run-1", genre_id=100283, ranking_items=ranking_items
+        run_id="run-1",
+        genre_id=100283,
+        ranking_items=ranking_items,
+        fetched_at="2026-01-27T04:10:00+09:00",
     )
 
     assert affected == 2
@@ -77,6 +80,7 @@ def test_insert_rank_snapshot_inserts_items() -> None:
     assert params[0] == (
         "shop:1",
         "2026-01-27T04:00:00+09:00",
+        "2026-01-27T04:10:00+09:00",
         100283,
         "Rakuten Ranking",
         "2026-01-27T04:00:00+09:00",
@@ -90,7 +94,9 @@ def test_insert_rank_snapshot_returns_zero_when_empty() -> None:
     conn = FakeConnection(cursor)
     repo = RankRepo(conn=conn)
 
-    affected = repo.insert_rank_snapshot(run_id="run-1", genre_id=100, ranking_items=[])
+    affected = repo.insert_rank_snapshot(
+        run_id="run-1", genre_id=100, ranking_items=[], fetched_at="2026-01-27T04:10:00+09:00"
+    )
 
     assert affected == 0
     assert conn.committed is False
