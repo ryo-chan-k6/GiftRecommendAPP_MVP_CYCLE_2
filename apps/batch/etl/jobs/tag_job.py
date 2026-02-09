@@ -43,9 +43,17 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
         )
 
         def target_provider(job_ctx: JobContext):
-            return policy.targets_tag_ids_from_today_items(
+            targets = list(policy.targets_tag_ids_from_today_items(
                 job_ctx, staging_repo=staging_repo, item_tag_repo=item_tag_repo
+            ))
+            logger.info(
+                "tag targets from today items: count=%s since=%s",
+                len(targets),
+                job_ctx.job_start_at,
             )
+            if targets:
+                logger.debug("tag target sample: %s", targets[:5])
+            return targets
 
         def fetcher(target: str) -> Mapping[str, Any]:
             return client.fetch_tag(tag_id=int(target))
