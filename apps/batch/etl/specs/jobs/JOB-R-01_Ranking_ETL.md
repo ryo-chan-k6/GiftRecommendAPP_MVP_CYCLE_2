@@ -59,6 +59,7 @@ Ranking ETL は「事実としてのランキング結果を記録するだけ�
 - 対象ジャンルID一覧を取得（policy）  
     対象ジャンルは、apl.target_genre_configの`is_enabled = true`の`rakuten_genre_id`。
 - ジャンルごとに Rakuten Ranking API を呼び出し
+- レスポンスは `Items / Item`（大文字）と `items`（小文字）の両方を許容
 - レスポンスを正規化
 - 正規化JSONから content_hash を生成
 - apl.staging(entity=ranking) を参照し hash差分判定
@@ -105,6 +106,7 @@ Ranking ETL は「事実としてのランキング結果を記録するだけ�
 - lastBuildDate を apl.item_rank_snapshot.last_build_date に保存する
 - 同一 genre に対して、APIの lastBuildDate が既存の last_build_date と一致する場合は insert しない（重複防止）
 - collected_at は last_build_date と同一値を採用する（同一ランキングの重複insertをDB制約で防止）
+- fetched_at は ETL の job_start_at を保存する（後続の Item ETL 入力抽出で使用）
 - insert は ON CONFLICT DO NOTHING を許容する
 
 「今日はこのitemがrank何位だった」という事実ログ。  
@@ -165,5 +167,7 @@ Ranking ETL は「事実としてのランキング結果を記録するだけ�
 
 | 更新種別 | キー | 内容 |
 | --- | --- | --- |
-| insert | (rakuten_item_code) | 全項目 |
+| insert | (rakuten_genre_id, rakuten_item_code, collected_at) | 全項目 |
+
+※ Item ETL の入力抽出は `fetched_at` が当日0:00以降のレコードを対象とする。
 

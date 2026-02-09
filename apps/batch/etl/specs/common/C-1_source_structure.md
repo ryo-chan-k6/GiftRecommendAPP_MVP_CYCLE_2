@@ -2,7 +2,7 @@
 
 ## 1. 前提（この構成で満たす要件）
 
-- 5ジョブ（JOB-R/I/G/T/A）を **同一骨格（共通処理）**で実装できる
+- 7ジョブ（JOB-R/I/G/T/A/E-01/E-02）を **同一骨格（共通処理）**で実装できる
 - rawはS3にimmutable保存、差分判定はhash、最新台帳はapl.staging
 - ジョブ責務の分離（更新可能テーブル境界）をコード構造で強制する
 - SQLは可能な限りファイル化し、差し替え可能にする
@@ -22,6 +22,8 @@ etl/
     genre_job.py              # JOB-G-01
     tag_job.py                # JOB-T-01
     is_active_job.py          # JOB-A-01
+    embedding_source_job.py   # JOB-E-01
+    embedding_build_job.py    # JOB-E-02
 
   services/                   # フロー制御（共通ロジック）
     __init__.py
@@ -32,6 +34,7 @@ etl/
   clients/                    # 外部接続（楽天APIなど）
     __init__.py
     rakuten_client.py         # API呼び出し・レート制御・リトライ（詳細はC-3）
+    openai_client.py          # Embeddings API 呼び出し
 
   core/                       # 横断ユーティリティ（純粋関数/薄いラッパ）
     __init__.py
@@ -55,12 +58,15 @@ etl/
       rank_repo.py            # apl.item_rank_snapshot
       genre_repo.py           # apl.genre
       tag_repo.py             # apl.tag_group / apl.tag
+      item_embedding_source_repo.py  # apl.item_embedding_source
+      item_embedding_repo.py         # apl.item_embedding
 
   sql/                        # 主要SQL（共通SQLはここに置く）
     common/
       staging_select_not_exists_hash.sql
       staging_batch_upsert.sql
       item_is_active_update.sql
+      embedding_source_diff_select.sql
     jobs/
       # ジョブ固有SQLが必要なら置く（MVPでは任意）
 
@@ -136,6 +142,8 @@ etl/
 | JOB-G-01 | jobs/genre_job.py | policy(staging(item)→item→genreId) | apl/genre_repo.py + staging_repo.py |
 | JOB-T-01 | jobs/tag_job.py | policy(staging(item)→item→item_tag→tagId) | apl/tag_repo.py + staging_repo.py |
 | JOB-A-01 | jobs/is_active_job.py | （専用のupdateフローでも可） | sql/common/item_is_active_update.sql（repo経由で実行） |
+| JOB-E-01 | jobs/embedding_source_job.py | （専用フロー） | apl/item_embedding_source_repo.py |
+| JOB-E-02 | jobs/embedding_build_job.py | （専用フロー） | apl/item_embedding_repo.py |
 
 ## 5. “後で決める”項目（この段階で確定しない）
 

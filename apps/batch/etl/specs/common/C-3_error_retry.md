@@ -2,7 +2,7 @@
 
 ## 0. 目的
 
-- 外部API（楽天）・S3・DBの失敗を想定し、ETLの信頼性と再実行耐性を確保する
+- 外部API（楽天 / OpenAI）・S3・DBの失敗を想定し、ETLの信頼性と再実行耐性を確保する
 - 「部分成功」や「途中失敗」が起きても、次回再実行で回復できるようにする
 - MVPでは複雑な分散制御を避け、単純かつ安全側に倒す
 
@@ -13,6 +13,9 @@
 | Rakuten: Rate Limit | HTTP 429 | 超過 | ✅ | 条件付き | バックオフ必須 |
 | Rakuten: Transient | HTTP 5xx / timeout / connection reset | 一時障害 | ✅ | 条件付き | リトライで回復見込み |
 | Rakuten: Client Error | HTTP 400/401/403/404 | パラメータ/認証/権限 | ❌ | ✅ | 設計/設定ミス |
+| OpenAI: Rate Limit | HTTP 429 | 超過 | ✅ | 条件付き | バックオフ必須 |
+| OpenAI: Transient | HTTP 5xx / timeout / connection reset | 一時障害 | ✅ | 条件付き | リトライで回復見込み |
+| OpenAI: Client Error | HTTP 401/403/404 | 認証/権限/不正 | ❌ | ✅ | 設定ミス |
 | S3: Transient | 5xx, timeout | 一時障害 | ✅ | ✅ | 保存できなければ進めない |
 | S3: Auth/Perm | 403 | 権限 | ❌ | ✅ | 設定ミス |
 | DB: Transient | deadlock, serialization, timeout | 競合/一時 | ✅ | ✅ | リトライ有効 |
@@ -56,7 +59,18 @@
 - failure_rate > 1% で失敗扱い（Ranking/Genre/Tag）
 - failure_rate > 5% で失敗扱い（Item）
 
-## 4. S3 Raw 保存（core/raw_store.py）の扱い
+## 4. OpenAI API（clients/openai_client.py）の扱い
+
+### 4.1 仕様
+
+- 429/5xx/timeout はリトライ
+- 401/403 は即fail（Secrets/設定ミス）
+
+### 4.2 失敗時のジョブ全体判定（MVP）
+
+- 失敗率が一定未満ならジョブ失敗扱い（exit != 0）
+
+## 5. S3 Raw 保存（core/raw_store.py）の扱い
 
 ### 4.1 重要原則（事実）
 
@@ -74,7 +88,7 @@
 - ジョブ全体判定の「失敗率」に加算
 - DB側は更新しないので、再実行で回復可能
 
-## 5. DB（repos/*）の扱い
+## 6. DB（repos/*）の扱い
 
 ### 5.1 staging更新（staging_repo.batch_upsert）
 
@@ -104,7 +118,7 @@
 6. apl upsert/sync
 7. commit
 
-## 6. 部分成功と冪等性（実運用で壊れないための規約）
+## 7. 部分成功と冪等性（実運用で壊れないための規約）
 
 ### 6.1 “対象単位の原子性”
 
@@ -117,7 +131,7 @@
 - rawは hash key なので同一hashのputは理論上冪等（ただし課金/ETag差はあり得る）
 - GHA側で同一ワークフローの同時実行を抑止する（C-4で確定）
 
-## 7. ログ仕様（最低限：原因追跡可能にする）
+## 8. ログ仕様（最低限：原因追跡可能にする）
 
 ### 7.1 ログに必ず含めるキー
 
@@ -137,19 +151,22 @@
 - failure_rate
 - exit_code（0/1）
 
-## 8. エラー別の具体対応表（実装直結）
+## 9. エラー別の具体対応表（実装直結）
 
 | 失敗ポイント | エラー | 対応 | 次回再実行で回復？ |
 | --- | --- | --- | --- |
 | Rakuten API | 429 | バックオフしてリトライ、上限で失敗記録 | ✅ |
 | Rakuten API | 5xx/timeout | リトライ、上限で失敗記録 | ✅ |
 | Rakuten API | 401/403 | 即ジョブ失敗（設定修正が必要） | ❌（設定次第） |
+| OpenAI API | 429 | バックオフしてリトライ、上限で失敗記録 | ✅ |
+| OpenAI API | 5xx/timeout | リトライ、上限で失敗記録 | ✅ |
+| OpenAI API | 401/403 | 即ジョブ失敗（設定修正が必要） | ❌（設定次第） |
 | S3 put | timeout/5xx | リトライ、上限でジョブ失敗寄り | ✅ |
 | S3 put | 403 | 即ジョブ失敗 | ❌ |
 | DB | deadlock/timeout | トランザクション単位でリトライ | ✅ |
 | DB | unique/constraint | 即ジョブ失敗（設計/同期バグ） | ❌（修正必要） |
 
-## 9. 受け入れ条件（C-3 Done）
+## 10. 受け入れ条件（C-3 Done）
 
 - 429/5xx/timeout でリトライされる
 - 401/403/400/404 は即failで原因がログから分かる
