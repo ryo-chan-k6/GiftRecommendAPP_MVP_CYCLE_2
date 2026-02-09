@@ -42,7 +42,8 @@ def targets_item_codes(
 def targets_genre_ids_from_today_items(
     ctx: JobContext, *, staging_repo: StagingRepo, item_repo: ItemRepo
 ) -> Iterable[int]:
-    source_ids = list(staging_repo.fetch_item_source_ids_since(since=ctx.job_start_at))
+    since = ctx.job_start_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    source_ids = list(staging_repo.fetch_item_source_ids_since(since=since))
     if not source_ids:
         return []
     return list(item_repo.fetch_distinct_genre_ids_by_source_ids(source_ids))
@@ -51,7 +52,8 @@ def targets_genre_ids_from_today_items(
 def targets_tag_ids_from_today_items(
     ctx: JobContext, *, staging_repo: StagingRepo, item_tag_repo: ItemTagRepo
 ) -> Iterable[int]:
-    source_ids = list(staging_repo.fetch_item_source_ids_since(since=ctx.job_start_at))
+    since = ctx.job_start_at.replace(hour=0, minute=0, second=0, microsecond=0)
+    source_ids = list(staging_repo.fetch_item_source_ids_since(since=since))
     if not source_ids:
         return []
     return list(item_tag_repo.fetch_distinct_tag_ids_by_source_ids(source_ids))
