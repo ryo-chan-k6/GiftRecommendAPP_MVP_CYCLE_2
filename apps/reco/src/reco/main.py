@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.handlers import recommend
-from api.schemas import RecommendationRequest, RecommendationResponse
+from reco.api.handlers import recommend
+from reco.api.schemas import RecommendationRequest, RecommendationResponse
 
 load_dotenv(dotenv_path="apps/reco/.env")
 
