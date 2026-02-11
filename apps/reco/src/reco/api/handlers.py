@@ -7,12 +7,12 @@ import json
 import math
 from typing import Any, Dict, List
 
-from api.schemas import RecommendationRequest, RecommendationResponse, RecommendedItem, ResolvedAlgorithm
-from core.mmr import mmr_select
-from core.mode_resolver import resolve_mode
-from core.scoring import score_candidates
-from infra.embedding_client import DEFAULT_EMBEDDING_MODEL, embed_text
-from infra.supabase_client import get_supabase_admin
+from reco.api.schemas import RecommendationRequest, RecommendationResponse, RecommendedItem, ResolvedAlgorithm
+from reco.core.mmr import mmr_select
+from reco.core.mode_resolver import resolve_mode
+from reco.core.scoring import score_candidates
+from reco.infra.embedding_client import DEFAULT_EMBEDDING_MODEL, embed_text
+from reco.infra.supabase_client import get_supabase_admin
 
 
 def _build_context_text(req: RecommendationRequest) -> str:

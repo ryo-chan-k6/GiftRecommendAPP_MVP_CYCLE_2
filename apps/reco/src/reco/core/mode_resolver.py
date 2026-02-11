@@ -1,6 +1,6 @@
 from typing import Optional
 
-from domain.models import ResolvedParams
+from reco.domain.models import ResolvedParams
 
 ALGORITHM_CHOICES = {
     "vector_only",
