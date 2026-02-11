@@ -465,6 +465,8 @@ Table "apl.staging" {
   s3_key text [not null]
   etag text
   saved_at timestamptz [not null, default: "now()"]
+  applied_at timestamptz
+  applied_version integer
 
   created_at timestamptz [not null, default: "now()"]
   updated_at timestamptz [not null, default: "now()"]

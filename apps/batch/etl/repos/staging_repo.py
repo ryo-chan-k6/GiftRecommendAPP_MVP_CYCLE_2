@@ -16,6 +16,12 @@ class StagingRow:
     saved_at: datetime
 
 
+@dataclass(frozen=True)
+class StagingStatus:
+    content_hash: str
+    applied_version: int | None
+
+
 class Cursor(Protocol):
     def execute(self, query: str, params: Sequence[object] | None = None) -> None: ...
     def executemany(self, query: str, params_seq: Sequence[Sequence[object]]) -> None: ...
@@ -35,9 +41,11 @@ class StagingRepo:
     def __init__(self, *, conn: Connection) -> None:
         self._conn = conn
 
-    def exists_hash(self, *, source: str, entity: str, source_id: str, content_hash: str) -> bool:
+    def get_latest_status(
+        self, *, source: str, entity: str, source_id: str
+    ) -> StagingStatus | None:
         sql = (
-            "select content_hash from apl.staging "
+            "select content_hash, applied_version from apl.staging "
             "where source = %s and entity = %s and source_id = %s "
             "order by saved_at desc limit 1"
         )
@@ -48,21 +56,31 @@ class StagingRepo:
         finally:
             cur.close()
         if not row:
+            return None
+        return StagingStatus(content_hash=row[0], applied_version=row[1])
+
+    def exists_hash(self, *, source: str, entity: str, source_id: str, content_hash: str) -> bool:
+        status = self.get_latest_status(
+            source=source, entity=entity, source_id=source_id
+        )
+        if not status:
             return False
-        return row[0] == content_hash
+        return status.content_hash == content_hash
 
     def batch_upsert(self, *, rows: Sequence[StagingRow]) -> int:
         if not rows:
             return 0
         sql = (
             "insert into apl.staging "
-            "(source, entity, source_id, content_hash, s3_key, etag, saved_at) "
-            "values (%s, %s, %s, %s, %s, %s, %s) "
+            "(source, entity, source_id, content_hash, s3_key, etag, saved_at, applied_at, applied_version) "
+            "values (%s, %s, %s, %s, %s, %s, %s, null, null) "
             "on conflict (source, entity, source_id) do update set "
             "content_hash = excluded.content_hash, "
             "s3_key = excluded.s3_key, "
             "etag = excluded.etag, "
             "saved_at = excluded.saved_at, "
+            "applied_at = null, "
+            "applied_version = null, "
             "updated_at = now()"
         )
         params = [
@@ -80,6 +98,29 @@ class StagingRepo:
         cur = self._conn.cursor()
         try:
             cur.executemany(sql, params)
+            affected = cur.rowcount
+        finally:
+            cur.close()
+        self._conn.commit()
+        return affected
+
+    def mark_applied(
+        self,
+        *,
+        source: str,
+        entity: str,
+        source_id: str,
+        content_hash: str,
+        applied_version: int,
+    ) -> int:
+        sql = (
+            "update apl.staging set "
+            "applied_at = now(), applied_version = %s, updated_at = now() "
+            "where source = %s and entity = %s and source_id = %s and content_hash = %s"
+        )
+        cur = self._conn.cursor()
+        try:
+            cur.execute(sql, (applied_version, source, entity, source_id, content_hash))
             affected = cur.rowcount
         finally:
             cur.close()

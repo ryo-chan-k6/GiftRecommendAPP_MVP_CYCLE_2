@@ -126,9 +126,11 @@ and s.saved_at >= :day_start
 | --- | --- |
 | unique key | (source, entity, source_id) |
 | source_id | tagId |
-| 更新内容 | content_hash, s3_key, saved_at, etag |
+| 更新内容 | content_hash, s3_key, saved_at, etag, applied_at, applied_version |
 
 ※ 差分なしの場合は staging を更新しない（MVP方針）
+※ apl反映が未実行（applied_at/applied_version未更新）の場合は、差分なしでもapl反映を再実行する
+※ content_hash が変わった場合は applied_* をリセットする
 
 ## 9. apl 反映仕様（重要）
 

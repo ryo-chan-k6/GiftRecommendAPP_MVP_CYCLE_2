@@ -311,6 +311,8 @@ CREATE TABLE IF NOT EXISTS apl.staging (
   s3_key text NOT NULL,
   etag text NULL,
   saved_at timestamptz NOT NULL DEFAULT now(),
+  applied_at timestamptz NULL,
+  applied_version integer NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
