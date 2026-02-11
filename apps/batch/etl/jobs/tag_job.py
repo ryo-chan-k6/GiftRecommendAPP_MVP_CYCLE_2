@@ -19,6 +19,27 @@ from services.etl_service import EtlService
 JOB_ID = "JOB-T-01"
 
 
+def _extract_tag_group_payloads(normalized: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Extract tagGroup payloads for DB upsert. Handles both tagGroups (array) and tagGroup (single)."""
+    tag_groups = normalized.get("tagGroups") or normalized.get("tag_groups")
+    if isinstance(tag_groups, list):
+        result = []
+        for item in tag_groups:
+            if not isinstance(item, Mapping):
+                continue
+            tg = item.get("tagGroup") or item.get("tag_group")
+            if isinstance(tg, Mapping):
+                result.append({"tagGroup": tg})
+        return result
+    # Fallback: single tagGroup at top level
+    tg = normalized.get("tagGroup") or normalized.get("tag_group")
+    if isinstance(tg, Mapping):
+        return [{"tagGroup": tg}]
+    if isinstance(normalized.get("tagGroupId"), (int, str)):
+        return [normalized]
+    return []
+
+
 def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = False) -> dict:
     job_run_id = run_id or uuid.uuid4().hex
     ctx = build_context(job_id=JOB_ID, env=config.env, run_id=job_run_id, dry_run=dry_run)
@@ -59,8 +80,9 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             return client.fetch_tag(tag_id=int(target))
 
         def applier(normalized: Mapping[str, Any], _job_ctx: JobContext, _target: str) -> None:
-            tag_repo.upsert_tag_group(normalized_tag=normalized)
-            tag_repo.upsert_tag(normalized_tag=normalized)
+            for payload in _extract_tag_group_payloads(normalized):
+                tag_repo.upsert_tag_group(normalized_tag=payload)
+                tag_repo.upsert_tag(normalized_tag=payload)
 
         return service.run_entity_etl(
             ctx=ctx,

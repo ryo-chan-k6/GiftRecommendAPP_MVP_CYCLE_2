@@ -107,3 +107,43 @@ def test_upsert_tag_skips_when_parent_missing() -> None:
     assert conn.committed is True
     assert len(cursor.executed) == 1
     assert "select id from apl.tag_group" in cursor.executed[0][0]
+
+
+@pytest.mark.unit
+def test_upsert_tag_handles_tags_with_tag_wrapper() -> None:
+    """楽天API実レスポンス形式（tags[].tag）を正しくアンラップして insert する"""
+    cursor = FakeCursor(
+        fetchone_values=[
+            ("group-uuid",),
+            ("tag-uuid", True),
+        ]
+    )
+    conn = FakeConnection(cursor)
+    repo = TagRepo(conn=conn)
+    normalized = {
+        "tagGroup": {
+            "tagGroupId": 1000041,
+            "tagGroupName": "サイズ（S/M/L）",
+            "tags": [
+                {
+                    "tag": {
+                        "tagId": 1000317,
+                        "tagName": "SS",
+                        "parentTagId": 0,
+                    }
+                }
+            ],
+        }
+    }
+
+    affected = repo.upsert_tag(normalized_tag=normalized)
+
+    assert affected == 1
+    assert conn.committed is True
+    assert len(cursor.executed) == 2
+    assert "select id from apl.tag_group" in cursor.executed[0][0]
+    assert "insert into apl.tag" in cursor.executed[1][0]
+    # tagId, tagName が正しくバインドされている
+    params = cursor.executed[1][1]
+    assert params[0] == 1000317
+    assert params[1] == "SS"

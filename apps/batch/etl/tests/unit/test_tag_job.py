@@ -138,3 +138,90 @@ def test_applier_upserts_group_and_tags(monkeypatch) -> None:
     tag_repo = FakeTagRepo.last_instance
     assert ("group", {"tagGroup": {"tagGroupId": 1000}}) in tag_repo.calls
     assert ("tag", {"tagGroup": {"tagGroupId": 1000}}) in tag_repo.calls
+
+
+@pytest.mark.unit
+def test_extract_tag_group_payloads_handles_tag_groups_array() -> None:
+    """tagGroups 配列形式（楽天API実レスポンス）を正しく展開する"""
+    normalized = {
+        "tagGroups": [
+            {
+                "tagGroup": {
+                    "tagGroupName": "サイズ（S/M/L）",
+                    "tagGroupId": 1000041,
+                    "tags": [
+                        {
+                            "tag": {
+                                "tagId": 1000317,
+                                "tagName": "SS",
+                                "parentTagId": 0,
+                            }
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+    payloads = tag_job._extract_tag_group_payloads(normalized)
+    assert len(payloads) == 1
+    assert payloads[0]["tagGroup"]["tagGroupId"] == 1000041
+    assert payloads[0]["tagGroup"]["tagGroupName"] == "サイズ（S/M/L）"
+    assert len(payloads[0]["tagGroup"]["tags"]) == 1
+    assert payloads[0]["tagGroup"]["tags"][0]["tag"]["tagId"] == 1000317
+
+
+@pytest.mark.unit
+def test_applier_handles_tag_groups_structure(monkeypatch) -> None:
+    """tagGroups 配列形式で applier が tag_repo を正しく呼ぶ"""
+    monkeypatch.setattr(tag_job, "StagingRepo", FakeStagingRepo)
+    monkeypatch.setattr(tag_job, "ItemTagRepo", FakeItemTagRepo)
+    monkeypatch.setattr(tag_job, "TagRepo", FakeTagRepo)
+    monkeypatch.setattr(tag_job, "RawStore", FakeRawStore)
+    monkeypatch.setattr(tag_job, "RakutenClient", FakeRakutenClient)
+    monkeypatch.setattr(tag_job, "EtlService", FakeEtlService)
+    monkeypatch.setattr(tag_job, "db_connection", fake_db_connection)
+
+    config = AppConfig(
+        env="dev",
+        database_url="postgres://example",
+        rakuten_app_id="app",
+        rakuten_affiliate_id=None,
+        s3_bucket_raw="bucket",
+        aws_region="ap-northeast-1",
+    )
+
+    tag_job.run_job(config=config, run_id="run-1", dry_run=False)
+    service = FakeEtlService.last_instance
+    applier = service.run_args["applier"]
+
+    # 楽天API実レスポンス形式（tagGroups + tags[].tag）
+    normalized = {
+        "tagGroups": [
+            {
+                "tagGroup": {
+                    "tagGroupName": "サイズ（S/M/L）",
+                    "tagGroupId": 1000041,
+                    "tags": [
+                        {
+                            "tag": {
+                                "tagId": 1000317,
+                                "tagName": "SS",
+                                "parentTagId": 0,
+                            }
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+    applier(normalized, service.run_args["ctx"], "1000317")
+
+    tag_repo = FakeTagRepo.last_instance
+    assert any(
+        c[0] == "group" and c[1]["tagGroup"]["tagGroupId"] == 1000041
+        for c in tag_repo.calls
+    )
+    assert any(
+        c[0] == "tag" and c[1]["tagGroup"]["tagGroupId"] == 1000041
+        for c in tag_repo.calls
+    )
