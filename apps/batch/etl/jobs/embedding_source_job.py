@@ -30,7 +30,8 @@ def run_job(
 
     with db_connection(database_url=database_url) as conn:
         repo = ItemEmbeddingSourceRepo(conn=conn)
-        targets = repo.fetch_feature_rows(since=ctx.job_start_at)
+        since = ctx.job_start_at.replace(hour=0, minute=0, second=0, microsecond=0)
+        targets = repo.fetch_feature_rows(since=since)
         total_targets = len(targets)
         upsert_inserted = 0
         upsert_updated = 0
