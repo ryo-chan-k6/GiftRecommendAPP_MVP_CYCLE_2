@@ -261,6 +261,11 @@
 
 #### JSONレスポンスサンプル（構造例）
 
+※実際のレスポンスは `tagGroups` 配列＋各要素の `tagGroup`、および `tags[].tag` のラップ構造になるケースあり。
+実装側で両形式（flat / tagGroups 配列）を許容する。
+
+**形式A（flat・仕様例）**
+
 ```json
 {
   "tagGroup": {
@@ -271,6 +276,30 @@
       { "tagId": 1000318, "tagName": "クッキー", "parentTagId": 0 }
     ]
   }
+}
+```
+
+**形式B（tagGroups 配列・実レスポンス）**
+
+```json
+{
+  "tagGroups": [
+    {
+      "tagGroup": {
+        "tagGroupName": "サイズ（S/M/L）",
+        "tagGroupId": 1000041,
+        "tags": [
+          {
+            "tag": {
+              "tagId": 1000317,
+              "tagName": "SS",
+              "parentTagId": 0
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
 ```
 

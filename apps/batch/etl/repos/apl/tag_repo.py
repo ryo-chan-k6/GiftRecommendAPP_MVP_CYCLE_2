@@ -186,8 +186,23 @@ def _pick_tags(
     for key in ("tags",):
         value = tag_group.get(key)
         if isinstance(value, list):
-            return [tag for tag in value if isinstance(tag, Mapping)]
+            return _unwrap_tags(value)
     value = normalized_tag.get("tags")
     if isinstance(value, list):
-        return [tag for tag in value if isinstance(tag, Mapping)]
+        return _unwrap_tags(value)
     return []
+
+
+def _unwrap_tags(tags_raw: list) -> list[Mapping[str, Any]]:
+    """Unwrap tags[].tag structure. Handles both {tag: {tagId,...}} and flat {tagId,...}."""
+    result: list[Mapping[str, Any]] = []
+    for t in tags_raw:
+        if not isinstance(t, Mapping):
+            continue
+        inner = t.get("tag") if isinstance(t.get("tag"), Mapping) else t
+        if (
+            isinstance(inner, Mapping)
+            and _pick(inner, ("tagId", "tag_id", "rakuten_tag_id")) is not None
+        ):
+            result.append(inner)
+    return result
