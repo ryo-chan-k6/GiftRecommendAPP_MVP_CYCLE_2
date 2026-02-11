@@ -1,5 +1,5 @@
 -- Select items that need embedding (missing or source_hash changed)
--- Params: %s (model)
+-- Params: model (1 param)
 select
   src.item_id,
   src.source_text,
