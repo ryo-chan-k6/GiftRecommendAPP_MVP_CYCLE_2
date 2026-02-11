@@ -16,12 +16,28 @@ def run_job(*, database_url: str, run_id: str | None = None, dry_run: bool = Fal
     job_run_id = run_id or uuid.uuid4().hex
     logger = get_logger(job_id=JOB_ID, run_id=job_run_id)
 
-    if dry_run:
-        logger.info("dry_run enabled: skip is_active update")
-        return {"updated": 0}
-
     sql = _load_sql()
     with db_connection(database_url=database_url) as conn:
+        cur = conn.cursor()
+        try:
+            target_tables = ["apl.item", "apl.genre", "apl.shop"]
+            table_counts: dict[str, int] = {}
+            for table in target_tables:
+                table_counts[table] = _count_table(cur, table)
+                logger.info(
+                    "is_active check target: table=%s count=%s",
+                    table,
+                    table_counts[table],
+                )
+        finally:
+            cur.close()
+
+        if dry_run:
+            logger.info(
+                "is_active update summary: updated_table=apl.item updated_count=0 dry_run=true"
+            )
+            return {"updated": 0}
+
         with transaction(conn):
             cur = conn.cursor()
             try:
@@ -30,12 +46,22 @@ def run_job(*, database_url: str, run_id: str | None = None, dry_run: bool = Fal
             finally:
                 cur.close()
 
+    logger.info(
+        "is_active update summary: updated_table=apl.item updated_count=%s dry_run=false",
+        updated,
+    )
     return {"updated": updated}
 
 
 def _load_sql() -> str:
     sql_path = Path(__file__).resolve().parents[1] / "sql" / "common" / "item_is_active_update.sql"
     return sql_path.read_text(encoding="utf-8")
+
+
+def _count_table(cur, table: str) -> int:
+    cur.execute(f"select count(*) from {table}")
+    row = cur.fetchone()
+    return int(row[0]) if row else 0
 
 
 def main() -> int:
