@@ -83,9 +83,20 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             return client.fetch_tag(tag_id=int(target))
 
         def applier(normalized: Mapping[str, Any], _job_ctx: JobContext, _target: str) -> None:
-            for payload in _extract_tag_group_payloads(normalized):
-                tag_repo.upsert_tag_group(normalized_tag=payload)
-                tag_repo.upsert_tag(normalized_tag=payload)
+            logger.info(
+                "tag normalize keys: %s",
+                list(normalized.keys()) if isinstance(normalized, Mapping) else "non-mapping",
+            )
+            payloads = _extract_tag_group_payloads(normalized)
+            logger.info("tag payloads extracted: count=%s", len(payloads))
+            for payload in payloads:
+                group_added = tag_repo.upsert_tag_group(normalized_tag=payload)
+                tag_added = tag_repo.upsert_tag(normalized_tag=payload)
+                logger.info(
+                    "tag upsert result: group_added=%s tag_added=%s",
+                    group_added,
+                    tag_added,
+                )
 
         return service.run_entity_etl(
             ctx=ctx,

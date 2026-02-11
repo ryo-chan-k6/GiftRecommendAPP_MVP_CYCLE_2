@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping, Protocol, Sequence
+
+logger = logging.getLogger(__name__)
 
 
 class Cursor(Protocol):
@@ -21,12 +24,14 @@ class TagRepo:
     def upsert_tag_group(self, *, normalized_tag: Mapping[str, Any]) -> int:
         tag_group = _pick_tag_group(normalized_tag)
         if not tag_group:
+            logger.info("tag_group missing in payload")
             return 0
         group_id = _pick(
             tag_group, ("tagGroupId", "tag_group_id", "rakuten_tag_group_id")
         )
         name = _pick(tag_group, ("tagGroupName", "tag_group_name", "name"))
         if group_id is None:
+            logger.info("tag_group_id missing in payload: %s", tag_group)
             return 0
 
         sql = (
@@ -52,20 +57,24 @@ class TagRepo:
     def upsert_tag(self, *, normalized_tag: Mapping[str, Any]) -> int:
         tag_group = _pick_tag_group(normalized_tag)
         if not tag_group:
+            logger.info("tag_group missing for tags")
             return 0
         group_id = _pick(
             tag_group, ("tagGroupId", "tag_group_id", "rakuten_tag_group_id")
         )
         if group_id is None:
+            logger.info("tag_group_id missing for tags: %s", tag_group)
             return 0
         tags = _pick_tags(tag_group, normalized_tag)
         if not tags:
+            logger.info("tags missing in payload: %s", tag_group)
             return 0
 
         cur = self._conn.cursor()
         try:
             group_row_id = _fetch_group_id(cur, group_id)
             if group_row_id is None:
+                logger.info("tag_group not found in db: rakuten_tag_group_id=%s", group_id)
                 return 0
 
             tag_map = {
