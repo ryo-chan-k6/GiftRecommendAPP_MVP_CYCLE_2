@@ -17,6 +17,7 @@ from services.context import JobContext, build_context
 from services.etl_service import EtlService
 
 JOB_ID = "JOB-R-01"
+RANKING_APPLY_VERSION = 1
 
 
 def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = False) -> dict:
@@ -87,6 +88,7 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             target_provider=target_provider,
             fetcher=fetcher,
             applier=applier,
+            apply_version=RANKING_APPLY_VERSION,
         )
 
 

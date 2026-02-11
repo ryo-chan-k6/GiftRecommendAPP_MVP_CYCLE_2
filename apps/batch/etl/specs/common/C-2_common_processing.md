@@ -45,6 +45,43 @@
 
 ※ JOB-A-01は「6〜7」の代わりに is_active 一括UPDATEを行う。
 
+### 2.1 staging反映管理（applied_at / applied_version）
+
+apl.staging は content_hash の差分判定だけでなく、apl反映の実行状態を管理する。
+
+- applied_at: 最後に apl 反映（applier）を完了した時刻
+- applied_version: apl反映ロジックのバージョン番号
+
+**運用ルール**
+
+- 各ジョブは `*_APPLY_VERSION` を定数で持ち、`apply_version` としてETLに渡す
+- `*_APPLY_VERSION` は「**apl反映（applier）を再実行すべきか**」を判定するための制御値
+- **applier の出力に影響する変更**（正規化・applier処理・参照テーブル変更）時は version をインクリメント
+- **ログ追加など出力に影響しない変更**では version を上げない
+- content_hash が更新された場合、applied_at / applied_version はリセットして再反映対象とする
+
+**判定方法（実行時の条件）**
+
+- 最新の staging 行（source, entity, source_id の最新）を取得
+- `content_hash` が一致しない場合は通常フロー（S3 put → staging upsert → applier）
+- `content_hash` が一致する場合は以下で分岐
+  - `applied_version == *_APPLY_VERSION`：apl反映済みのため **スキップ**
+  - `applied_version != *_APPLY_VERSION`：apl反映ロジック差分ありのため **再実行**
+
+**想定更新方法（applied_* の更新タイミング）**
+
+- applier が正常終了した時点で `applied_at = now()` を記録
+- 併せて `applied_version = *_APPLY_VERSION` を記録
+- `content_hash` が変わった場合は staging upsert 時に `applied_*` を **null にリセット**
+
+**applied_version のインクリメント運用（いつ・どの処理で行うか）**
+
+- インクリメントは **自動ではなく手動**で行う
+- 実施箇所は各ジョブの定数 `*_APPLY_VERSION`（例: `TAG_APPLY_VERSION`）を更新
+- 「applierの出力に影響する変更」をリリースするタイミングで +1 する
+  - 例: 正規化ルール変更 / applierのupsert項目変更 / 参照テーブル変更
+- 変更後のジョブ実行時に `applied_version != *_APPLY_VERSION` が検知され、再反映が走る
+
 ## 3. 実行コンテキスト（services/context.py）
 
 ### 3.1 Contextの責務
