@@ -17,12 +17,16 @@ class FakeCursor:
         self.executed = []
         self.rowcount = rowcount
         self.closed = False
+        self.fetchone_value = (0,)
 
     def execute(self, query: str, params=None) -> None:
         self.executed.append((query, params))
 
     def close(self) -> None:
         self.closed = True
+
+    def fetchone(self):
+        return self.fetchone_value
 
 
 class FakeConnection:
