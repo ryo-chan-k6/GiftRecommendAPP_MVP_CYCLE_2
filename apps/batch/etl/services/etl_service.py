@@ -57,6 +57,7 @@ class EtlService:
         target_provider: TargetProvider,
         fetcher: Fetcher,
         applier: Applier,
+        apply_version: int | None = None,
     ) -> dict:
         targets = list(target_provider(ctx))
         total_targets = len(targets)
@@ -79,12 +80,28 @@ class EtlService:
                 self._logger.info(
                     "etl normalized: target=%s hash=%s", target, content_hash
                 )
-                if self._staging_repo.exists_hash(
-                    source=source,
-                    entity=entity,
-                    source_id=str(target),
-                    content_hash=content_hash,
-                ):
+                status = self._staging_repo.get_latest_status(
+                    source=source, entity=entity, source_id=str(target)
+                )
+                if status and status.content_hash == content_hash:
+                    if apply_version is not None and status.applied_version != apply_version:
+                        if ctx.dry_run:
+                            self._logger.info(
+                                "etl skip: target=%s reason=dry_run", target
+                            )
+                            success_count += 1
+                            continue
+                        self._logger.info(
+                            "etl reapply: target=%s reason=applied_version_mismatch", target
+                        )
+                        applier(normalized, ctx, target)
+                        self._staging_repo.mark_applied(
+                            source=source,
+                            entity=entity,
+                            source_id=str(target),
+                            content_hash=content_hash,
+                            applied_version=apply_version,
+                        )
                     self._logger.info(
                         "etl skip: target=%s reason=exists_hash", target
                     )
@@ -120,6 +137,14 @@ class EtlService:
                     "etl staging upsert: target=%s rows=%s", target, upserted
                 )
                 applier(normalized, ctx, target)
+                if apply_version is not None:
+                    self._staging_repo.mark_applied(
+                        source=source,
+                        entity=entity,
+                        source_id=str(target),
+                        content_hash=content_hash,
+                        applied_version=apply_version,
+                    )
                 self._logger.info("etl applier done: target=%s", target)
                 success_count += 1
             except Exception:

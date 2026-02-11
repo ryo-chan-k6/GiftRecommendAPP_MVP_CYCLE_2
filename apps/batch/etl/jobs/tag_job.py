@@ -17,6 +17,7 @@ from services.context import JobContext, build_context
 from services.etl_service import EtlService
 
 JOB_ID = "JOB-T-01"
+TAG_APPLY_VERSION = 1
 
 
 def _extract_tag_group_payloads(normalized: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -105,6 +106,7 @@ def run_job(*, config: AppConfig, run_id: str | None = None, dry_run: bool = Fal
             target_provider=target_provider,
             fetcher=fetcher,
             applier=applier,
+            apply_version=TAG_APPLY_VERSION,
         )
 
 

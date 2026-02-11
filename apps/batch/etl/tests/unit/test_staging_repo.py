@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 
-from repos.staging_repo import StagingRepo, StagingRow  # noqa: E402
+from repos.staging_repo import StagingRepo, StagingRow, StagingStatus  # noqa: E402
 
 
 class FakeCursor:
@@ -53,7 +53,7 @@ class FakeConnection:
 
 @pytest.mark.unit
 def test_exists_hash_returns_true_when_latest_hash_matches() -> None:
-    cursor = FakeCursor(fetchone_value=("hash-1",))
+    cursor = FakeCursor(fetchone_value=("hash-1", None))
     repo = StagingRepo(conn=FakeConnection(cursor))
 
     assert repo.exists_hash(
@@ -109,6 +109,37 @@ def test_batch_upsert_inserts_rows_and_commits() -> None:
     assert cursor.executed_many
     sql = cursor.executed_many[0][0]
     assert "on conflict (source, entity, source_id)" in sql
+    assert "applied_version" in sql
+
+
+@pytest.mark.unit
+def test_get_latest_status_returns_status() -> None:
+    cursor = FakeCursor(fetchone_value=("hash-1", 2))
+    repo = StagingRepo(conn=FakeConnection(cursor))
+
+    status = repo.get_latest_status(source="rakuten", entity="item", source_id="shop:1")
+
+    assert status == StagingStatus(content_hash="hash-1", applied_version=2)
+    assert cursor.closed is True
+
+
+@pytest.mark.unit
+def test_mark_applied_updates_and_commits() -> None:
+    cursor = FakeCursor(rowcount=1)
+    conn = FakeConnection(cursor)
+    repo = StagingRepo(conn=conn)
+
+    affected = repo.mark_applied(
+        source="rakuten",
+        entity="item",
+        source_id="shop:1",
+        content_hash="hash-1",
+        applied_version=3,
+    )
+
+    assert affected == 1
+    assert conn.committed is True
+    assert cursor.closed is True
 
 
 @pytest.mark.unit
