@@ -112,6 +112,25 @@ def _compute_popularity_score(
     return quality * math.log1p(review_count)
 
 
+def _write_step_summary(summary: dict) -> None:
+    path = os.getenv("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    lines = [
+        "## JOB-F-01 Item Features Build",
+        "",
+        f"- total_targets: {summary.get('total_targets')}",
+        f"- upsert_inserted: {summary.get('upsert_inserted')}",
+        f"- upsert_updated: {summary.get('upsert_updated')}",
+        f"- skipped_no_diff: {summary.get('skipped_no_diff')}",
+        f"- failure_count: {summary.get('failure_count')}",
+        f"- failure_rate: {summary.get('failure_rate')}",
+        "",
+    ]
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write("\n".join(lines))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="JOB-F-01 Item Features Build")
     parser.add_argument("--dry-run", action="store_true")
@@ -131,22 +150,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-def _write_step_summary(summary: dict) -> None:
-    path = os.getenv("GITHUB_STEP_SUMMARY")
-    if not path:
-        return
-    lines = [
-        "## JOB-F-01 Item Features Build",
-        "",
-        f"- total_targets: {summary.get('total_targets')}",
-        f"- upsert_inserted: {summary.get('upsert_inserted')}",
-        f"- upsert_updated: {summary.get('upsert_updated')}",
-        f"- skipped_no_diff: {summary.get('skipped_no_diff')}",
-        f"- failure_count: {summary.get('failure_count')}",
-        f"- failure_rate: {summary.get('failure_rate')}",
-        "",
-    ]
-    with open(path, "a", encoding="utf-8") as handle:
-        handle.write("\n".join(lines))
