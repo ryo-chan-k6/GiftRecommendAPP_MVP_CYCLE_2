@@ -30,6 +30,9 @@ def _extract_tag_group_payloads(normalized: Mapping[str, Any]) -> list[Mapping[s
             tg = item.get("tagGroup") or item.get("tag_group")
             if isinstance(tg, Mapping):
                 result.append({"tagGroup": tg})
+                continue
+            if isinstance(item.get("tagGroupId"), (int, str)):
+                result.append(item)
         return result
     # Fallback: single tagGroup at top level
     tg = normalized.get("tagGroup") or normalized.get("tag_group")
