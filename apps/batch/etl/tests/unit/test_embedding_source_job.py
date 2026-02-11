@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 
 from jobs import embedding_source_job  # noqa: E402
+from services.context import JobContext  # noqa: E402
 from repos.apl.item_embedding_source_repo import ItemFeatureRow  # noqa: E402
 
 
@@ -93,3 +94,57 @@ def test_source_hash_is_stable_after_normalization() -> None:
         embedding_source_job._compute_source_hash(text_a)
         == embedding_source_job._compute_source_hash(text_b)
     )
+
+
+@pytest.mark.unit
+def test_run_job_uses_day_start_for_since(monkeypatch) -> None:
+    captured_since = {}
+
+    class FakeRepo:
+        def __init__(self, *, conn) -> None:
+            self.conn = conn
+
+        def fetch_feature_rows(self, *, since):
+            captured_since["value"] = since
+            return []
+
+    class FakeLogger:
+        def info(self, *_args, **_kwargs):
+            pass
+
+        def warning(self, *_args, **_kwargs):
+            pass
+
+        def exception(self, *_args, **_kwargs):
+            pass
+
+    @contextmanager
+    def fake_db_connection(*, database_url: str):
+        assert database_url == "postgres://example"
+        yield object()
+
+    fixed_start = datetime(2026, 2, 11, 14, 10, tzinfo=timezone.utc)
+
+    def fake_build_context(*, job_id: str, env: str, run_id: str, dry_run: bool = False):
+        return JobContext(
+            job_id=job_id,
+            env=env,
+            run_id=run_id,
+            job_start_at=fixed_start,
+            dry_run=dry_run,
+        )
+
+    monkeypatch.setattr(embedding_source_job, "ItemEmbeddingSourceRepo", FakeRepo)
+    monkeypatch.setattr(embedding_source_job, "db_connection", fake_db_connection)
+    monkeypatch.setattr(embedding_source_job, "get_logger", lambda **_kwargs: FakeLogger())
+    monkeypatch.setattr(embedding_source_job, "build_context", fake_build_context)
+
+    embedding_source_job.run_job(
+        env="dev", database_url="postgres://example", run_id="run-1", dry_run=True
+    )
+
+    since = captured_since["value"]
+    assert since.hour == 0
+    assert since.minute == 0
+    assert since.second == 0
+    assert since.microsecond == 0

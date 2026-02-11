@@ -64,6 +64,16 @@ select
 
   -- features (optional; 1 row per item_id)
   f.features_version           as features_version,
+  f.price_yen                  as feature_price_yen,
+  f.price_log                  as feature_price_log,
+  f.point_rate                 as feature_point_rate,
+  f.availability               as feature_availability,
+  f.review_average             as feature_review_average,
+  f.review_count               as feature_review_count,
+  f.review_count_log           as feature_review_count_log,
+  f.rank                       as feature_rank,
+  f.rakuten_genre_id            as feature_rakuten_genre_id,
+  f.tag_ids                    as feature_tag_ids,
   f.popularity_score           as popularity_score,
 
   -- active flag
@@ -74,6 +84,7 @@ select
   i.updated_at                 as item_updated_at,
   greatest(
     i.updated_at,
+    coalesce(f.updated_at, i.updated_at),
     coalesce(ms.collected_at, i.updated_at),
     coalesce(rs.collected_at, i.updated_at),
     coalesce(rks.fetched_at, i.updated_at),
