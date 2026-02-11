@@ -60,7 +60,7 @@ class FakeEtlService:
         FakeEtlService.last_instance = self
 
     def run_entity_etl(
-        self, *, ctx, source, entity, target_provider, fetcher, applier
+        self, *, ctx, source, entity, target_provider, fetcher, applier, apply_version=None
     ) -> dict:
         self.run_args = {
             "ctx": ctx,
@@ -69,6 +69,7 @@ class FakeEtlService:
             "target_provider": target_provider,
             "fetcher": fetcher,
             "applier": applier,
+            "apply_version": apply_version,
         }
         return {"ok": True}
 
