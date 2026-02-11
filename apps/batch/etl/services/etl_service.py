@@ -62,22 +62,37 @@ class EtlService:
         total_targets = len(targets)
         success_count = 0
         failure_count = 0
+        self._logger.info(
+            "etl start: source=%s entity=%s total_targets=%s dry_run=%s",
+            source,
+            entity,
+            total_targets,
+            ctx.dry_run,
+        )
 
         for target in targets:
             try:
+                self._logger.info("etl target start: target=%s", target)
                 raw = fetcher(target)
                 normalized = normalize(entity, raw)
                 content_hash = compute_content_hash(normalized)
+                self._logger.info(
+                    "etl normalized: target=%s hash=%s", target, content_hash
+                )
                 if self._staging_repo.exists_hash(
                     source=source,
                     entity=entity,
                     source_id=str(target),
                     content_hash=content_hash,
                 ):
+                    self._logger.info(
+                        "etl skip: target=%s reason=exists_hash", target
+                    )
                     success_count += 1
                     continue
 
                 if ctx.dry_run:
+                    self._logger.info("etl skip: target=%s reason=dry_run", target)
                     success_count += 1
                     continue
 
@@ -87,6 +102,7 @@ class EtlService:
                     source_id=str(target),
                     content_hash=content_hash,
                 )
+                self._logger.info("etl raw store: target=%s s3_key=%s", target, s3_key)
                 put_result = self._raw_store.put_json(
                     bucket=self._s3_bucket, s3_key=s3_key, body=normalized
                 )
@@ -99,8 +115,12 @@ class EtlService:
                     etag=put_result.etag,
                     saved_at=put_result.saved_at,
                 )
-                self._staging_repo.batch_upsert(rows=[row])
+                upserted = self._staging_repo.batch_upsert(rows=[row])
+                self._logger.info(
+                    "etl staging upsert: target=%s rows=%s", target, upserted
+                )
                 applier(normalized, ctx, target)
+                self._logger.info("etl applier done: target=%s", target)
                 success_count += 1
             except Exception:
                 failure_count += 1
@@ -109,6 +129,14 @@ class EtlService:
                 )
 
         failure_rate = failure_count / total_targets if total_targets else 0
+        self._logger.info(
+            "etl done: source=%s entity=%s success=%s failure=%s failure_rate=%s",
+            source,
+            entity,
+            success_count,
+            failure_count,
+            failure_rate,
+        )
         return {
             "total_targets": total_targets,
             "success_count": success_count,
