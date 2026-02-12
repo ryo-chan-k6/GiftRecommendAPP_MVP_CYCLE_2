@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function RecoTestPage() {
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string>("");
 
   const callApi = async () => {
@@ -36,7 +36,7 @@ export default function RecoTestPage() {
       return;
     }
 
-    setResult(JSON.parse(text));
+    setResult(JSON.parse(text) as Record<string, unknown>);
   };
 
   return (
@@ -47,11 +47,11 @@ export default function RecoTestPage() {
       </button>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
-      {result && (
+      {result != null ? (
         <pre style={{ whiteSpace: "pre-wrap" }}>
           {JSON.stringify(result, null, 2)}
         </pre>
-      )}
+      ) : null}
     </main>
   );
 }

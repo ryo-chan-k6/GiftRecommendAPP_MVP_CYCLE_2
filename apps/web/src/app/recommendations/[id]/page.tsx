@@ -4,11 +4,17 @@ import {useEffect, useState} from "react";
 import {useParams} from "next/navigation";
 import {supabase} from "../../../lib/supabaseClient";
 
-export default function RecommendationDetailPage() {
-    const params = useParams<{id: string}>();
-    const id = params?.id;
+type RecommendationDetailResponse = {
+    header?: unknown;
+    context?: unknown;
+    items?: unknown;
+};
 
-    const [data, setData] = useState<any>(null);
+export default function RecommendationDetailPage() {
+    const params = useParams();
+    const id = typeof params?.id === "string" ? params.id : undefined;
+
+    const [data, setData] = useState<RecommendationDetailResponse | null>(null);
     const [err, setErr] = useState<string | null>(null);
 
     useEffect(() => {
@@ -35,9 +41,9 @@ export default function RecommendationDetailPage() {
                 const text = await res.text();
                 if (!res.ok) throw new Error(`API error ${res.status}: ${text}`);
 
-                setData(JSON.parse(text));
-            }catch  (e:any) {
-                setErr(e?.message ?? String(e));
+                setData(JSON.parse(text) as RecommendationDetailResponse);
+            } catch (e: unknown) {
+                setErr(e instanceof Error ? e.message : String(e));
             }
         }
 
