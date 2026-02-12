@@ -9,7 +9,7 @@ type RecommendationRow = {
     context_id: string;
     algorithm: string;
     created_at: string;
-    params: any;
+    params: Record<string, unknown>;
 };
 
 export default function RecommendationPage() {
@@ -38,10 +38,10 @@ export default function RecommendationPage() {
                 const text = await res.text();
                 if(!res.ok) throw new Error(`API error ${res.status}: ${text}`);
 
-                const data = JSON.parse(text);
+                const data = JSON.parse(text) as { items?: RecommendationRow[] };
                 setItems(Array.isArray(data.items) ? data.items : []);
-            }catch (e: any) {
-                setErr(e?.message ?? String(e));
+            } catch (e: unknown) {
+                setErr(e instanceof Error ? e.message : String(e));
             }finally {
                 setLoading(false);
             }

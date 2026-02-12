@@ -44,7 +44,7 @@ export default function RecommendRunPage() {
             if(!token) throw new Error("No session / access_token. Please sign in.");
 
             // 2) API payload（MVP最小）
-            const payload: any = {
+            const payload = {
                 mode,
                 eventId: eventId.trim() === "" ? null : eventId.trim(),
                 recipientId: recipientId.trim() === "" ? null : recipientId.trim(),
@@ -69,7 +69,7 @@ export default function RecommendRunPage() {
             if (!res.ok) {
                 let message = text;
                 try {
-                    const parsed = JSON.parse(text);
+                    const parsed = JSON.parse(text) as { message?: string };
                     message = parsed?.message ?? message;
                 } catch {
                     // keep raw text
@@ -77,16 +77,16 @@ export default function RecommendRunPage() {
                 throw new Error(`API error ${res.status}: ${message}`);
             }
 
-            const data = JSON.parse(text);
+            const data = JSON.parse(text) as { recommendationId?: string };
 
             // apiのレスポンスに recommendationId が入っている前提
             const recommendationId = data.recommendationId;
             if(!recommendationId) throw new Error("recommendationId is missing in response");
 
             router.push(`/recommendations/${recommendationId}`);
-        }catch (e: any) {
-            setErr(e?.message ?? String(e));
-        }finally {
+        } catch (e: unknown) {
+            setErr(e instanceof Error ? e.message : String(e));
+        } finally {
             setLoading(false);
         }
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
@@ -58,11 +59,11 @@ export default function LoginPage() {
         </button>
 
         <p>{msg}</p>
-        <a href="/register" className="text-blue-600 hover:underline">
+        <Link href="/register" className="text-blue-600 hover:underline">
           新規登録
-        </a>
-        <a href="/recommend">Go to Recommend</a>
-        <a href="/recommendations">Recommendations List</a>
+        </Link>
+        <Link href="/recommend">Go to Recommend</Link>
+        <Link href="/recommendations">Recommendations List</Link>
       </div>
     </main>
   );

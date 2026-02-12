@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  batch-unit:
+    name: batch
+    if: github.event_name == 'pull_request' || github.event.head_commit != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13.3
+
+      - name: Install dependencies
+        working-directory: apps/batch
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        working-directory: apps/batch/etl
+        run: pytest -m "unit"
+
+  web-check:
+    name: web
+    if: github.event_name == 'pull_request' || github.event.head_commit != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @app/web run lint
+
+      - name: Build
+        env:
+          # ビルド用のプレースホルダー（CI に Secrets を設定すれば本番値を使用可能）
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MTYyMzkwMjJ9.placeholder' }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001' }}
+        run: pnpm --filter @app/web run build
+
+  api-check:
+    name: api
+    if: github.event_name == 'pull_request' || github.event.head_commit != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm --filter @app/api exec tsc --noEmit
+
+  reco-check:
+    name: reco
+    if: github.event_name == 'pull_request' || github.event.head_commit != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13.3
+
+      - name: Install dependencies
+        working-directory: apps/reco
+        run: pip install -r requirements.txt
+
+      - name: Verify app loads
+        working-directory: apps/reco/src
+        run: python -c "from reco.main import app; assert app is not None"
+
+  create-pr:
+    needs: [batch-unit, web-check, api-check, reco-check]
+    if: github.event_name == 'push' && github.event.head_commit != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create PR when missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          HEAD_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          existing_count=$(gh pr list --head "${HEAD_BRANCH}" --state open --json number --jq 'length')
+          if [ "${existing_count}" -gt 0 ]; then
+            echo "PR already exists for ${HEAD_BRANCH}. Skipping."
+            exit 0
+          fi
+
+          ahead_by=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${HEAD_BRANCH}" --jq '.ahead_by')
+          if [ "${ahead_by}" -eq 0 ]; then
+            echo "No commits ahead of ${BASE_BRANCH} on ${HEAD_BRANCH}. Skipping."
+            exit 0
+          fi
+
+          gh pr create \
+            --base "${BASE_BRANCH}" \
+            --head "${HEAD_BRANCH}" \
+            --title "Auto PR: ${HEAD_BRANCH}" \
+            --body "Auto-created PR for branch ${HEAD_BRANCH}."

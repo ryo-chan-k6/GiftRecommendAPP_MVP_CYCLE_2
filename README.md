@@ -83,8 +83,12 @@ pytest -m "unit"
 
 ## CI / ワークフロー
 
-- `ci_batch_unit.yaml`: バッチ単体テスト + テスト成功後のPR作成
-- `batch-etl.yml`: バッチETLジョブの実行
+- `ci.yaml`: 統一CI（batch / web / api / reco の単体テスト・検証 + テスト成功後のPR作成）
+  - `batch-unit`: バッチ単体テスト（pytest）
+  - `web-check`: Lint + Build
+  - `api-check`: TypeScript型チェック
+  - `reco-check`: アプリ読み込み検証
+- `batch-etl.yml`: バッチETLジョブの実行（手動）
 
 ## ドキュメント
 
