@@ -58,6 +58,9 @@ export default function LoginPage() {
         </button>
 
         <p>{msg}</p>
+        <a href="/register" className="text-blue-600 hover:underline">
+          新規登録
+        </a>
         <a href="/recommend">Go to Recommend</a>
         <a href="/recommendations">Recommendations List</a>
       </div>
