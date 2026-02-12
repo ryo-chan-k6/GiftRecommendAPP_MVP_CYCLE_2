@@ -110,47 +110,21 @@ YAML 先頭付近が ` on:` になっているように見えます（先頭に�
 
 ### 6.2 分割案
 - `batch-daily.yml`：**schedule（mainのみ） + workflow_dispatch**
-- `batch-ci.yml`：**push/PR/dispatch（任意ブランチ）** で batch のみ検証
+- `ci.yaml`：**push/PR（任意ブランチ）** で batch / web / api / reco の単体検証を統一実行
 
 ---
 
 ## 7. `paths` フィルタで「必要なCIだけ」動かす
 
-### 7.1 各コンポーネントにCIを用意（例）
-- `web-ci.yml`：`apps/web/**` が変わったら動く
-- `api-ci.yml`：`apps/api/**` が変わったら動く
-- `reco-ci.yml`：`apps/reco/**` が変わったら動く
-- `batch-ci.yml`：`apps/batch/**` が変わったら動く
+### 7.1 統一CI（ci.yaml）の構成
+- `ci.yaml`：**batch / web / api / reco の検証を1ワークフローに統合**
+- ジョブ：`batch-unit` / `web-check` / `api-check` / `reco-check`（並列実行）
+- 全ジョブ成功後に `create-pr` で PR 自動作成
+- `push`（main 以外）/ `pull_request` でトリガ
 
-### 7.2 batch-ci.yml のイメージ（骨子）
-- feature ブランチでも手動実行できる（`workflow_dispatch`）
-- `push`/`pull_request` は batch 配下の変更時のみ
-
-```yaml
-name: Batch CI
-
-on:
-  workflow_dispatch:
-    inputs:
-      job:
-        description: "Which batch job to run"
-        required: true
-        default: "fetch:ranking"
-        type: choice
-        options: ["fetch:ranking","fetch:item","fetch:genre","fetch:tag","etl:item","build:embedding"]
-  push:
-    paths:
-      - "apps/batch/**"
-      - ".github/workflows/batch-ci.yml"
-  pull_request:
-    paths:
-      - "apps/batch/**"
-      - ".github/workflows/batch-ci.yml"
-```
-
-**効果**  
-- `api` 実装途中でも、batch だけ変更して batch-ci が回る  
-- `main` に入れなくても feature ブランチで検証できる
+### 7.2 paths フィルタ（将来拡張案）
+- 不要なCI実行を減らすため、`paths` フィルタで変更検知を追加可能
+- 例：`apps/batch/**` 変更時のみ `batch-unit` を実行する等
 
 ---
 
@@ -179,9 +153,9 @@ on:
 ### 9.2 推奨運用フロー（例）
 1. `feature/batch-x` を切る
 2. `apps/batch` のみ変更してコミット（途中でもOK）
-3. GitHub Actions → `Batch CI` を `workflow_dispatch` で実行（dev DB）
-4. 期待通りになったら PR 作成
-5. PR で batch-ci が緑になることを確認
+3.  push で `ci.yaml` が自動実行（batch-unit 等が緑になれば PR 自動作成）
+4. または手動で GitHub Actions → `batch-etl` を `workflow_dispatch` で実行（dev DB）
+5. PR で CI が緑になることを確認
 6. squash merge で main へ（main に未完が混ざらない）
 
 ---
@@ -203,9 +177,10 @@ on:
 
 ## 11. 付録: .github/workflows の整理指針
 
-- `*-ci.yml`：変更検知（push/PR/dispatch）
+- `ci.yaml`：**統一CI**（push/PR で batch / web / api / reco の単体テスト・検証 + テスト成功後のPR自動作成）
+- `batch-etl.yml`：バッチETL実行（workflow_dispatch 手動）
 - `*-deploy.yml`：デプロイ（main へのマージや tag）
-- `batch-daily.yml`：定期ジョブ（schedule）
+- `batch-daily.yml`：定期ジョブ（schedule、必要時に有効化）
 
 ---
 

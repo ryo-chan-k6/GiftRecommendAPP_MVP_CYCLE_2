@@ -15,7 +15,10 @@ JOB-R-01 -> JOB-I-01 -> (JOB-G-01 || JOB-T-01) -> JOB-A-01 -> JOB-E-01 -> JOB-E-
 
 ## 4. 使用ワークフロー
 
-- `.github/workflows/batch-etl.yml`
+| 種別 | ファイル | 用途 |
+|------|----------|------|
+| バッチETL実行 | `.github/workflows/batch-etl.yml` | 手動実行でジョブネット実行 |
+| 統一CI（単体テスト等） | `.github/workflows/ci.yaml` | push/PR で batch / web / api / reco の検証 |
 
 ## 5. 必須Secrets（最小セット）
 
