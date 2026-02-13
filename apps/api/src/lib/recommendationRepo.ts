@@ -1,7 +1,7 @@
 import {supabaseAdmin} from "@/lib/supabase";
 
 export type SaveRecoArgs = {
-    userId: string;
+    userId?: string | null;
 
     // context （保存したい条件一式）
     context: {
@@ -45,9 +45,9 @@ export async function saveRecommendation(args: SaveRecoArgs) {
         .from("context")
         .upsert(
             {
-                user_id: args.userId,
-                event_id: args.context.eventId,
-                recipient_id: args.context.recipientId,
+                user_id: args.userId ?? null,
+                event_id: args.context.eventId ?? null,
+                recipient_id: args.context.recipientId ?? null,
                 budget_min: args.context.budgetMin,
                 budget_max: args.context.budgetMax,
                 features_like: args.context.featuresLike,
@@ -72,7 +72,7 @@ export async function saveRecommendation(args: SaveRecoArgs) {
         .schema("apl")
         .from("recommendation")
         .insert({
-            user_id: args.userId,
+            user_id: args.userId ?? null,
             context_id: contextId,
             algorithm: args.algorithm,
             params: args.params,

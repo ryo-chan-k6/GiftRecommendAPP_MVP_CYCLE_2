@@ -9,9 +9,11 @@ function normArr(xs: unknown): string[] {
 }
 
 export function computeContextHash(input: {
-    userId: string;
+    userId?: string | null;
     eventId?: string | null;
     recipientId?: string | null;
+    eventName?: string | null;
+    recipientDescription?: string | null;
     mode: string;
     budgetMin?: number | null;
     budgetMax?: number | null;
@@ -23,9 +25,11 @@ export function computeContextHash(input: {
     embeddingContext: string;
 }): string {
     const payload = {
-        userId: input.userId,
+        userId: input.userId ?? null,
         eventId: input.eventId ?? null,
         recipientId: input.recipientId ?? null,
+        eventName: input.eventName ?? null,
+        recipientDescription: input.recipientDescription ?? null,
         mode: input.mode,
         budgetMin: input.budgetMin ?? null,
         budgetMax: input.budgetMax ?? null,

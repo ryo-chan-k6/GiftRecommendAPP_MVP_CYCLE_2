@@ -9,8 +9,10 @@ AlgorithmOverride = Literal["vector_only", "vector_ranked", "vector_ranked_mmr"]
 class RecommendationRequest(BaseModel):
     mode: Mode = Field(..., description="User-facing recommendation mode")
 
-    eventId: Optional[str] = None
-    recipientId: Optional[str] = None
+    eventId: Optional[str] = None  # deprecated
+    recipientId: Optional[str] = None  # deprecated
+    eventName: Optional[str] = None
+    recipientDescription: Optional[str] = None
 
     budgetMin: Optional[int] = Field(None, ge=0)
     budgetMax: Optional[int] = Field(None, ge=0)
@@ -29,6 +31,10 @@ class RecommendedItem(BaseModel):
     vectorScore: Optional[float] = None
     rerankScore: Optional[float] = None
     reason: Dict[str, Any]
+    itemName: Optional[str] = None
+    itemUrl: Optional[str] = None
+    affiliateUrl: Optional[str] = None
+    priceYen: Optional[int] = None
 
 
 class ResolvedAlgorithm(BaseModel):

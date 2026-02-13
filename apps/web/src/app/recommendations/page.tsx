@@ -1,89 +1,28 @@
 "use client";
 
-import {useState, useEffect} from "react";
-import {supabase} from "../../lib/supabaseClient";
 import Link from "next/link";
 
-type RecommendationRow = {
-    id: string;
-    context_id: string;
-    algorithm: string;
-    created_at: string;
-    params: Record<string, unknown>;
-};
-
 export default function RecommendationPage() {
-    const [items, setItems] = useState<RecommendationRow[]>([]);
-    const [err, setErr] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function run() {
-            try {
-                const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-                if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
-
-                const {data: sessionData, error: sessionErr} = await supabase.auth.getSession();
-                if(sessionErr) throw sessionErr;
-
-                const token = sessionData.session?.access_token;
-                if (!token) throw new Error("No session / access_token. Please sign in.");
-
-                const res = await fetch(`${baseUrl}/recommendations/list?page=1&pageSize=30`,{
-                    method: "GET",
-                    headers: {Authorization: `Bearer ${token}`},
-                    cache: "no-store"
-                });
-            
-                const text = await res.text();
-                if(!res.ok) throw new Error(`API error ${res.status}: ${text}`);
-
-                const data = JSON.parse(text) as { items?: RecommendationRow[] };
-                setItems(Array.isArray(data.items) ? data.items : []);
-            } catch (e: unknown) {
-                setErr(e instanceof Error ? e.message : String(e));
-            }finally {
-                setLoading(false);
-            }
-        }
-        run();
-    }, []);
-
-    if(err) return <pre style={{padding: 16}}>Error: {err}</pre>;
-    if(loading) return <div style={{padding:16}}>Loading...</div>;
-
-    return (
-        <main style={{padding: 16}}>
-            <h1>Recommendations</h1>
-
-            {items.length === 0 ? (
-                <p style={{marginTop:16}}>No recommendations yet.</p>
-            ) : (
-                <table style={{width: "100%", borderCollapse: "collapse", marginTop:16}}>
-                    <thead>
-                        <tr>
-                            <th style={{borderBottom: "1px solid #ddd", textAlign: "left"}}>created_at</th>
-                            <th style={{borderBottom: "1px solid #ddd", textAlign: "left"}}>algorithm</th>
-                            <th style={{borderBottom: "1px solid #ddd", textAlign: "left"}}>id</th>
-                            <th style={{borderBottom: "1px solid #ddd"}}></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items.map((r) => (
-                            <tr key={r.id}>
-                                <td style={{padding: 8, borderBottom: "1px solid #eee"}}>
-                                    {new Date(r.created_at).toLocaleString()}
-                                </td>
-                                <td style={{padding: 8, borderBottom: "1px solid #eee"}}>{r.algorithm}</td>
-                                <td style={{padding: 8, borderBottom: "1px solid #eee", fontFamily: "monospace"}}>{r.id}</td>
-                                <td style={{padding: 8, borderBottom: "1px solid #eee"}}>
-                                    <Link href={`/recommendations/${r.id}`}>Open</Link>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-        </main>
-    );
-};
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            レコメンド履歴
+          </h1>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">
+            MVP では履歴一覧は利用できません。認証なしのため「自分の」履歴を取得する手段がありません。
+          </p>
+          <p className="mt-6">
+            <Link
+              href="/recommend"
+              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md transition-colors hover:bg-blue-700"
+            >
+              レコメンドを実行
+            </Link>
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
