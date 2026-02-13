@@ -63,7 +63,6 @@ export default function LoginPage() {
           新規登録
         </Link>
         <Link href="/recommend">Go to Recommend</Link>
-        <Link href="/recommendations">Recommendations List</Link>
       </div>
     </main>
   );

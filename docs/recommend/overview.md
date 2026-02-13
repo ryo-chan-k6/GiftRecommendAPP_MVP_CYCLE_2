@@ -160,6 +160,7 @@ Algorithm enum: `vector_ranked_mmr`
 - `scoring_definition.md`
 - `mmr_algorithm.md`
 - `recommendation_flow.md`
+- `../for_cursorAI/web/レコメンドページ_認証不要MVP仕様.md`（初期 MVP：認証不要・ステートレス）
 
 ---
 

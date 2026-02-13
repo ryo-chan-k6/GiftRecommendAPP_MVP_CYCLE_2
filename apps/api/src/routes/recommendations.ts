@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { requireAuth } from "../middlewares/requireAuth";
+import { optionalAuth } from "../middlewares/optionalAuth";
 import {
   ALGORITHM_OVERRIDES,
   AlgorithmOverride,
@@ -9,44 +9,48 @@ import { isAdmin } from "@/lib/admin";
 import {supabaseAdmin} from "@/lib/supabase";
 import {saveRecommendation} from "@/lib/recommendationRepo";
 import {computeContextHash} from "@/lib/contextHash";
+import {enrichItemsWithDetails} from "@/lib/enrichItems";
 
 const router = Router();
 
-router.post("/", requireAuth, async (req: Request, res: Response) => {
+router.post("/", optionalAuth, async (req: Request, res: Response) => {
   try {
     const recoBaseUrl = process.env.RECO_BASE_URL;
     if (!recoBaseUrl) return res.status(500).json({ message: "RECO_BASE_URL is not set" });
 
-    const userId = req.user?.id;
-    if(!userId) return res.status(401).json({message: "Unauthenticated"});
-
+    const userId = req.user?.id ?? null;
     const body = req.body ?? {};
 
     const mode = body.mode;
     if (!MODES.includes(mode)) return res.status(400).json({message: "Invalid mode", allowed: MODES});
 
-    // algorithmOverrride は ADMIN のみ許可（必要なときだけチェック）
+    // algorithmOverride は ADMIN のみ許可（認証ありの場合のみ）
     let algorithmOverride: string | null = null;
     if (body.algorithmOverride != null) {
       if(!ALGORITHM_OVERRIDES.includes(body.algorithmOverride)) {
         return res.status(400).json({message: "Invalid algorithmOverride", allowed: ALGORITHM_OVERRIDES})
       }
-      const ok = await isAdmin(userId);
-      if(!ok) return res.status(403).json({message: "algorithmOverride is allowed for ADMIN only"});
+      if (userId) {
+        const ok = await isAdmin(userId);
+        if(!ok) return res.status(403).json({message: "algorithmOverride is allowed for ADMIN only"});
+      } else {
+        return res.status(401).json({message: "algorithmOverride requires authentication"});
+      }
       algorithmOverride = body.algorithmOverride;
     }
 
-    // reco へ送る payload (最低限)
-    const recoPayload: any = {};
-    recoPayload.mode = mode;
-    recoPayload.eventId = body.eventId ?? null;
-    recoPayload.recipientId = body.recipientId ?? null;
-    recoPayload.budgetMin = body.budgetMin ?? null;
-    recoPayload.budgetMax = body.budgetMax ?? null;
-    recoPayload.featuresLike = body.featuresLike ?? [];
-    recoPayload.featuresNotLike = body.featuresNotLike ?? [];
-    recoPayload.featuresNg = body.featuresNg ?? [];
-    if(algorithmOverride) recoPayload.algorithmOverride = algorithmOverride;
+    // reco へ送る payload
+    const recoPayload: Record<string, unknown> = {
+      mode,
+      eventName: body.eventName ?? null,
+      recipientDescription: body.recipientDescription ?? null,
+      budgetMin: body.budgetMin ?? null,
+      budgetMax: body.budgetMax ?? null,
+      featuresLike: body.featuresLike ?? [],
+      featuresNotLike: body.featuresNotLike ?? [],
+      featuresNg: body.featuresNg ?? [],
+      ...(algorithmOverride && { algorithmOverride }),
+    };
 
     const recoRes = await fetch(`${recoBaseUrl}/recommendations`, {
       method: "POST",
@@ -70,9 +74,9 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       recoData?.context?.embeddingVersion ?? 1;
 
     const contextHash = computeContextHash({
-      userId: userId,
-      eventId: body.eventId ?? null,
-      recipientId: body.recipientId ?? null,
+      userId,
+      eventName: body.eventName ?? null,
+      recipientDescription: body.recipientDescription ?? null,
       mode: mode,
       budgetMin: body.budgetMin ?? null,
       budgetMax: body.budgetMax ?? null,
@@ -95,12 +99,12 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       reason: it.reason ?? null,
     }));
 
-    // DB 保存
+    // DB 保存（認証なしの場合は user_id=null）
     const saved = await saveRecommendation({
       userId,
       context: {
-        eventId: body.eventId ?? null,
-        recipientId: body.recipientId ?? null,
+        eventId: null,
+        recipientId: null,
         budgetMin: body.budgetMin ?? null,
         budgetMax: body.budgetMax ?? null,
         featuresLike: body.featuresLike ?? [],
@@ -120,6 +124,22 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       items,
     });
 
+    const enrichedItems = await enrichItemsWithDetails(
+      recoData.items.map((it: any) => ({
+        itemId: it.itemId,
+        rank: it.rank ?? 0,
+        score: it.score,
+        reason: it.reason,
+      }))
+    );
+    const itemsWithDetails = enrichedItems.map((e, i) => ({
+      ...e,
+      itemName: e.itemName || recoData.items[i]?.itemName,
+      itemUrl: e.itemUrl || recoData.items[i]?.itemUrl,
+      affiliateUrl: e.affiliateUrl || recoData.items[i]?.affiliateUrl,
+      priceYen: e.priceYen ?? recoData.items[i]?.priceYen,
+    }));
+
     return res.status(200).json({
       recommendationId: saved.recommendationId,
       contextId: saved.contextId,
@@ -128,78 +148,50 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
         name: resolvedAlgorithm,
         params: recoData.resolved?.params ?? {},
       },
-      items: recoData.items,
+      items: itemsWithDetails,
     });
   } catch (err) {
     console.log("recommendations error:", err);
     return res.status(500).json({message: "Internal Server Error"});
   }
 });
-router.get("/list", requireAuth, async (req: Request, res:Response) => {
-  try {
-    const userId = req.user?.id;
-    if(!userId) return res.status(401).json({message: "Unauthenticated"});
-
-    const page = Math.max(1, Number(req.query.page ?? 1));
-    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize ?? 20)));
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    // recommendation 一覧（合計件数も取る）
-    const {data, error, count} = await supabaseAdmin
-      .schema("apl")
-      .from("recommendation")
-      .select("id, user_id, context_id, algorithm, params, created_at", {count: "exact"})
-      .eq("user_id", userId)
-      .order("created_at", {ascending: false})
-      .range(from, to)
-
-    if(error) throw error;
-
-    return res.status(200).json({
-      items: data ?? [],
-      page,
-      pageSize,
-      totalItems: count ?? 0,
-      totalPages: Math.ceil((count ?? 0) / pageSize),
-      hasNext: from + pageSize < (count ?? 0),
-    });
-  }catch (e) {
-    console.log("GET /recommendations/list error:", e);
-    return res.status(500).json({message: "Internal Server Error"});
-  }
+router.get("/list", (_req: Request, res: Response) => {
+  // MVP では非提供（認証なしのため「自分の」一覧は取得不可）
+  return res.status(404).json({message: "Not available in MVP"});
 });
 
-router.get("/:id", requireAuth, async(req: Request, res: Response) => {
+router.get("/:id", async(req: Request, res: Response) => {
   try {
-      const userId = req.user?.id;
-      if(!userId) return res.status(401).json({messaage: "Unauthenticated"});
-
       const id = req.params.id;
 
-      // 1) header 取得
+      // 1) header 取得（認証不要、recommendationId を知っていれば誰でも閲覧可能）
       const {data: header, error: hErr} = await supabaseAdmin
           .schema("apl")
           .from("recommendation")
           .select("*")
-          .eq("id",id)
+          .eq("id", id)
           .single();
       
       if(hErr) throw hErr;
       if(!header) return res.status(404).json({message: "Not found"});
 
-      // 2) 自分のものだけ
-      if(header.user_id !== userId) return res.status(403).json({message: "Forbidden"});
-
       // 3) items 取得
-      const {data:items, error:iErr} = await supabaseAdmin
+      const {data: items, error: iErr} = await supabaseAdmin
           .schema("apl")
           .from("recommendation_item")
           .select("*")
           .eq("recommendation_id", id)
           .order("rank", { ascending: true });
       
-          if(iErr) throw iErr;
+      if(iErr) throw iErr;
+
+      const rawItems = (items ?? []).map((r: any) => ({
+        itemId: r.item_id,
+        rank: r.rank ?? 0,
+        score: r.score,
+        reason: r.reason,
+      }));
+      const enrichedItems = await enrichItemsWithDetails(rawItems);
       
       // 4) context も返す（UI で表示・デバッグが便利）
       const {data: ctx, error: cErr} = await supabaseAdmin
@@ -209,13 +201,13 @@ router.get("/:id", requireAuth, async(req: Request, res: Response) => {
           .eq("id", header.context_id)
           .maybeSingle();
       
-          if(cErr) throw cErr;
+      if(cErr) throw cErr;
       
-          return res.status(200).json({
-              header,
-              context: ctx,
-              items: items ?? [],
-          });
+      return res.status(200).json({
+          header,
+          context: ctx,
+          items: enrichedItems,
+      });
   }catch(e) {
       console.error("GET /recommendations/:id", e);
       return res.status(500).json({ message: "Internal Server Error" });

@@ -325,7 +325,7 @@ CREATE INDEX IF NOT EXISTS idx_apl_staging_entity_saved_at
 
 CREATE TABLE IF NOT EXISTS apl.target_genre_config (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  rakuten_genre_id bigint NULL,
+  rakuten_genre_id bigint NOT NULL UNIQUE,
   is_enabled bool DEFAULT true,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
