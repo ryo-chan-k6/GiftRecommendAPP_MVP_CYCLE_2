@@ -9,7 +9,8 @@ from fastapi.responses import JSONResponse
 from reco.api.handlers import recommend
 from reco.api.schemas import RecommendationRequest, RecommendationResponse
 
-load_dotenv(dotenv_path="apps/reco/.env")
+# ローカル開発時は .env を読み込む（コンテナでは Fly.io の環境変数を使用）
+load_dotenv()
 
 # ログ設定（標準出力へ出力、エラー調査を容易にする）
 logging.basicConfig(

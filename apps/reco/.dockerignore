@@ -1,0 +1,9 @@
+# ビルドに不要なファイルを除外（転送時間短縮・セキュリティ）
+.venv
+.env
+__pycache__
+**/__pycache__
+.pytest_cache
+*.pyc
+.git
+.gitignore
