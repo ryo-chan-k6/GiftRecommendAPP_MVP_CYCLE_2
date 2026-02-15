@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "ES2015.Iterable"],
+    "lib": [
+      "ES2022",
+      "ES2015.Iterable"
+    ],
     "module": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "src",
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -10,9 +15,16 @@
     "skipLibCheck": true,
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "**/node_modules"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules"
+  ]
 }
