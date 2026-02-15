@@ -15,7 +15,7 @@ const router = Router();
 
 router.post("/", optionalAuth, async (req: Request, res: Response) => {
   try {
-    const recoBaseUrl = process.env.RECO_BASE_URL;
+    const recoBaseUrl = (process.env.RECO_BASE_URL ?? "").replace(/\/$/, "");
     if (!recoBaseUrl) return res.status(500).json({ message: "RECO_BASE_URL is not set" });
 
     const userId = req.user?.id ?? null;
@@ -59,7 +59,15 @@ router.post("/", optionalAuth, async (req: Request, res: Response) => {
     });
 
     const text = await recoRes.text();
-    if(!recoRes.ok) return res.status(recoRes.status).json({message: "Reco service error", detail: text});
+    if (!recoRes.ok) {
+      const hint = recoRes.status === 404
+        ? " (Reco URL が誤っている可能性: RECO_BASE_URL を確認)"
+        : "";
+      return res.status(recoRes.status).json({
+        message: `Reco service error${hint}`,
+        detail: text,
+      });
+    }
 
     const recoData = JSON.parse(text);
 
