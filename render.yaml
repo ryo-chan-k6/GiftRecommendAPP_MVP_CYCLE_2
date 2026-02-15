@@ -1,0 +1,15 @@
+# Render Blueprint - apps/api 用の設定例
+# 参考: https://render.com/docs/blueprint-spec
+#
+# Render ダッシュボードで Root Directory を apps/api に設定している場合:
+# - Build Command: cd ../.. && pnpm install --frozen-lockfile && pnpm -C apps/api build
+# - Start Command: node dist/index.js  （pnpm -C apps/api start は使わない）
+
+services:
+  - type: web
+    name: gift-reco-api
+    runtime: node
+    rootDir: apps/api
+    buildCommand: cd ../.. && pnpm install --frozen-lockfile && pnpm -C apps/api build
+    startCommand: node dist/index.js
+    # 環境変数は Render ダッシュボードで設定
