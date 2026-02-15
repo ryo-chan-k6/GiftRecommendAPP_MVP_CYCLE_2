@@ -66,7 +66,8 @@ export default function RecommendRunPage() {
         featuresNg: toList(featuresNg),
       };
 
-      const res = await fetch(`${baseUrl}/recommendations`, {
+      const apiUrl = `${baseUrl.replace(/\/$/, "")}/recommendations`;
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -81,7 +82,9 @@ export default function RecommendRunPage() {
         } catch {
           // keep raw text
         }
-        throw new Error(`API error ${res.status}: ${message}`);
+        // 404 の場合はリクエスト先を表示（デバッグ用）
+        const urlHint = res.status === 404 ? ` (URL: ${apiUrl})` : "";
+        throw new Error(`API error ${res.status}: ${message}${urlHint}`);
       }
 
       const data = JSON.parse(text) as RecommendationResult;
