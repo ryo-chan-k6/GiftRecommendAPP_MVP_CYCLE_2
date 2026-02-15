@@ -140,15 +140,25 @@ def recommend(req: RecommendationRequest) -> RecommendationResponse:
             len(rows),
         )
         raise HTTPException(status_code=500, detail="no item_id in features result")
+
+    # PostgREST の URL 長制限を回避するため、バッチ分割で取得（1バッチ最大100件）
+    EMBEDDING_BATCH_SIZE = 100
+    embeddings: Dict[str, List[float]] = {}
     try:
-        embedding_resp = (
-            sb.schema("apl")
-            .table("item_embedding")
-            .select("item_id, embedding")
-            .eq("model", DEFAULT_EMBEDDING_MODEL)
-            .in_("item_id", item_ids)
-            .execute()
-        )
+        for i in range(0, len(item_ids), EMBEDDING_BATCH_SIZE):
+            batch = item_ids[i : i + EMBEDDING_BATCH_SIZE]
+            embedding_resp = (
+                sb.schema("apl")
+                .table("item_embedding")
+                .select("item_id, embedding")
+                .eq("model", DEFAULT_EMBEDDING_MODEL)
+                .in_("item_id", batch)
+                .execute()
+            )
+            for r in embedding_resp.data or []:
+                emb = _parse_embedding(r.get("embedding"))
+                if emb is not None:
+                    embeddings[r.get("item_id")] = emb
     except Exception as e:
         logger.exception(
             "recommendation item_embedding query failed request_id=%s item_ids_count=%s error=%s",
@@ -157,12 +167,6 @@ def recommend(req: RecommendationRequest) -> RecommendationResponse:
             e,
         )
         raise HTTPException(status_code=500, detail=f"item_embedding query failed: {e}")
-
-    embeddings = {}
-    for r in embedding_resp.data or []:
-        emb = _parse_embedding(r.get("embedding"))
-        if emb is not None:
-            embeddings[r.get("item_id")] = emb
 
     # item_id -> 商品詳細のマップ（最終レスポンス用）
     item_details: Dict[str, Dict[str, Any]] = {}
