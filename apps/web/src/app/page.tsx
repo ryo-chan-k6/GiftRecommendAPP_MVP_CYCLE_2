@@ -17,9 +17,15 @@ export default function HomePage() {
 
   useEffect(() => {
     const fetchHealthAPI = async () => {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!apiBase) {
+        setErrorAPI("NEXT_PUBLIC_API_BASE_URL is not set");
+        return;
+      }
       try {
-        console.log("🔄 API へのリクエスト開始: http://localhost:3001/health");
-        const resAPI = await fetch("http://localhost:3001/health");
+        const url = `${apiBase.replace(/\/$/, "")}/health`;
+        console.log("🔄 API へのリクエスト開始:", url);
+        const resAPI = await fetch(url);
 
         console.log("📡 API レスポンス:", {
           status: resAPI.status,
@@ -48,9 +54,15 @@ export default function HomePage() {
     };
 
     const fetchHealthReco = async () => {
+      const recoBase = process.env.NEXT_PUBLIC_RECO_BASE_URL;
+      if (!recoBase) {
+        setErrorReco("NEXT_PUBLIC_RECO_BASE_URL is not set");
+        return;
+      }
       try {
-        console.log("🔄 Reco へのリクエスト開始: http://localhost:3002/health");
-        const resReco = await fetch("http://localhost:3002/health");
+        const url = `${recoBase.replace(/\/$/, "")}/health`;
+        console.log("🔄 Reco へのリクエスト開始:", url);
+        const resReco = await fetch(url);
 
         console.log("📡 Reco レスポンス:", {
           status: resReco.status,
