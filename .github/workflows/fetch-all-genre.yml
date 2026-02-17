@@ -1,0 +1,68 @@
+name: fetch-all-genre
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_genre_id:
+        description: "開始ジャンルID"
+        required: false
+        default: "0"
+        type: string
+      batch_size:
+        description: "バッチサイズ"
+        required: false
+        default: "20"
+        type: string
+      sleep_sec:
+        description: "API呼び出し間隔（秒）"
+        required: false
+        default: "0.2"
+        type: string
+      max_genres:
+        description: "取得件数上限（空=無制限）"
+        required: false
+        default: ""
+        type: string
+      timeout_sec:
+        description: "APIタイムアウト（秒）"
+        required: false
+        default: "20"
+        type: string
+      api_base_url:
+        description: "楽天APIベースURL（空=デフォルト）"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  fetch_all_genre:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13.3
+
+      - name: Install dependencies
+        working-directory: apps/batch
+        run: pip install -r requirements.txt
+
+      - name: Run fetchAll_genre.py
+        working-directory: apps/batch/etl/tools
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+        run: |
+          set -e
+          ARGS=(
+            --start-genre-id "${{ inputs.start_genre_id }}"
+            --batch-size "${{ inputs.batch_size }}"
+            --sleep-sec "${{ inputs.sleep_sec }}"
+            --timeout-sec "${{ inputs.timeout_sec }}"
+          )
+          [ -n "${{ inputs.max_genres }}" ] && ARGS+=(--max-genres "${{ inputs.max_genres }}")
+          [ -n "${{ inputs.api_base_url }}" ] && ARGS+=(--api-base-url "${{ inputs.api_base_url }}")
+          python fetchAll_genre.py "${ARGS[@]}"
