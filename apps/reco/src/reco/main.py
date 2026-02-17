@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -9,8 +10,9 @@ from fastapi.responses import JSONResponse
 from reco.api.handlers import recommend
 from reco.api.schemas import RecommendationRequest, RecommendationResponse
 
-# ローカル開発時は .env を読み込む（コンテナでは Fly.io の環境変数を使用）
-load_dotenv()
+# apps/reco/.env を読み込む（実行ディレクトリに依存しない）
+_env_path = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=_env_path)
 
 # ログ設定（標準出力へ出力、エラー調査を容易にする）
 logging.basicConfig(
