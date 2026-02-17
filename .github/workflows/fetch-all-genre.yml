@@ -64,7 +64,7 @@ jobs:
       - name: Run fetchAll_genre.py
         working-directory: apps/batch/etl/tools
         env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
           RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
         run: |
           set -e
