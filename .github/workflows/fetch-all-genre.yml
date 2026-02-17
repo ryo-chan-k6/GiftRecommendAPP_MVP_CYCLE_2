@@ -50,6 +50,17 @@ jobs:
         working-directory: apps/batch
         run: pip install -r requirements.txt
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.NEON_DATABASE_URL }}" ]; then
+            echo "::error::NEON_DATABASE_URL が設定されていません。リポジトリの Settings → Secrets and variables → Actions で NEON_DATABASE_URL を追加してください。"
+            exit 1
+          fi
+          if [ -z "${{ secrets.RAKUTEN_APP_ID }}" ]; then
+            echo "::error::RAKUTEN_APP_ID が設定されていません。リポジトリの Settings → Secrets and variables → Actions で RAKUTEN_APP_ID を追加してください。"
+            exit 1
+          fi
+
       - name: Run fetchAll_genre.py
         working-directory: apps/batch/etl/tools
         env:
