@@ -374,7 +374,7 @@ def parse_args(argv: List[str]) -> Config:
     args = p.parse_args(argv)
 
     if not args.database_url:
-        raise SystemExit("DATABASE_URL is required (arg or env)")
+        raise SystemExit("NEON_DATABASE_URL is required (arg or env)")
     if not args.rakuten_app_id:
         raise SystemExit("RAKUTEN_APP_ID is required (arg or env)")
 
